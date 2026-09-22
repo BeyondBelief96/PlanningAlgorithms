@@ -1,0 +1,56 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "vs",
+      "displayName": "Visual Studio 2026 (MSVC)",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/vs"
+    },
+    {
+      "name": "ninja",
+      "displayName": "Ninja, using whatever compiler is on PATH",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "clang",
+      "displayName": "Ninja + clang++",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "vs", "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "ninja", "configurePreset": "ninja" },
+    { "name": "clang", "configurePreset": "clang" }
+  ],
+  "testPresets": [
+    {
+      "name": "vs",
+      "configurePreset": "vs",
+      "configuration": "Debug",
+      "filter": { "include": { "label": "yours" } },
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "ninja",
+      "configurePreset": "ninja",
+      "filter": { "include": { "label": "yours" } },
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "clang",
+      "configurePreset": "clang",
+      "filter": { "include": { "label": "yours" } },
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
