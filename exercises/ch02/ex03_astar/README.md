@@ -1,29 +1,31 @@
-# Exercise 03 — A* and best-first search
+# Exercise 03 — The quickest route, faster
 
-**Book:** Section 2.2.2 · **Guide:** [docs/ch02/03-search-methods.md](../../../docs/ch02/03-search-methods.md)
+**Guide:** [Which one to look at next](../../../docs/ch02/03-search-methods.md)
 
 ## Implement
 
 ```cpp
-Plan aStar(const Problem& problem, const Heuristic& h);          // sort by C(x) + h(x)
-Plan bestFirstSearch(const Problem& problem, const Heuristic& h); // sort by h(x)
+Plan aStar(const Problem& problem, const Heuristic& h);           // cost so far + guess
+Plan bestFirstSearch(const Problem& problem, const Heuristic& h); // guess alone
 ```
 
 Both are Exercise 02 with a different sort key. If you parameterise the weight on
-the cost-to-come term, they are literally the same function called twice.
+the cost-so-far term, they are literally the same function called twice.
 
 ## The traps
 
-**`h(x)` can be infinite.** `GridProblem::manhattan()` returns `kInfinity` for a
-state from which no goal is reachable. Adding infinity to a finite cost is legal
-but makes the ordering useless. Decide what to do — the reference keeps such states
-out of `Q` entirely — and write down why in a comment.
+**The guess can be infinite.** `GridProblem::manhattan()` returns infinity for a
+square from which the goal cannot be reached at all — the far side of a closed
+stand, say. Adding infinity to a finite cost is legal and makes the ordering
+useless. Decide what to do — the reference keeps such squares out of the queue
+entirely — and write down why in a comment.
 
-**A* is still Dijkstra underneath.** The `dead` bookkeeping, the stale-entry
-discard and the test-on-pop rule all carry over unchanged. Only the key changes.
+**A\* is still Dijkstra underneath.** The `dead` bookkeeping, the stale-entry
+discard and the check-on-removal rule all carry over unchanged. Only the key
+changes.
 
-**Best-first drops `C(x)` entirely.** Not "de-emphasises" — drops. That is what
-costs it optimality, and it is also what makes it fast.
+**Best first drops the cost-so-far entirely.** Not de-emphasises — drops. That is
+what costs it optimality, and it is also what makes it fast.
 
 ## Run it
 
@@ -33,43 +35,68 @@ ctest --test-dir build/vs -C Debug -R ch02.ex03 --output-on-failure
 
 ## What the tests check
 
-- A* with the Manhattan heuristic is optimal on `tiny` and `bugTrap`.
-- A* with `zeroHeuristic()` gives exactly Dijkstra's cost — the degenerate case the
-  book points out.
-- A* with Euclidean is also optimal: it is admissible too, just weaker.
-- **A* with Manhattan expands strictly fewer states than A* with a zero heuristic**
-  on `openRoom`. This is the measurable content of book Exercise 18.
-- Best-first returns a valid plan, and the test asserts only that its cost is *at
-  least* optimal. It makes no claim that it is worse, because on these maps it
+- A\* with the square-corner guess is optimal on `standArea` and on
+  `deadEndPier`.
+- A\* with `zeroHeuristic()` gives **exactly** Dijkstra's cost — the degenerate
+  case worth confirming rather than believing.
+- A\* with straight-line distance is also optimal: it never overestimates either,
+  it is just a weaker guess.
+- **A\* with the square-corner guess examines strictly fewer squares than A\* with
+  no guess** on `openApron`. That inequality is the entire measurable content of
+  the exercise.
+- Best first returns a legal route, and the test asserts only that its cost is *at
+  least* optimal. It makes no claim that it is worse, because on this apron it
   sometimes is not.
 
 ## Once it is green
 
 ```powershell
-./build/vs/Debug/grid_demo.exe openroom
+./build/vs/Debug/surface_demo.exe open
 ```
 
-Expected shape of the answer (the reference produces exactly these):
+The reference produces exactly these:
 
 ```
-  Dijkstra                 cost 23   expanded 226
-  A* (Euclidean)           cost 23   expanded 169
-  A* (Manhattan)           cost 23   expanded 129
-  best first               cost 23   expanded  24
+  Dijkstra                 23.000 minutes   expanded 226
+  A* (Euclidean)           23.000 minutes   expanded 169
+  A* (Manhattan)           23.000 minutes   expanded 129
+  best first               23.000 minutes   expanded  24
 ```
 
-Book Exercise 18 asks which heuristic is superior and why. Manhattan, because it
-is *exact* in obstacle-free regions of a 4-connected grid, while Euclidean
-systematically undershoots — a grid robot cannot move diagonally, so the
-straight-line distance is never achievable.
+Same route, four times, at wildly different cost to compute it.
 
-Then notice the number that should bother you: A* still expands 129 of 240 states
-with an exact heuristic. With `Ĝ` exact, every cell on every monotone staircase
-between start and goal has the same `f = 23`, and A* has no reason to prefer any
-of them. That is the second half of Exercise 18, and it motivates Exercise 21 —
-detect the plateau and do something less systematic.
+Square-corner distance beats straight-line distance because it is *exact* on
+clear pavement, while the straight line systematically undershoots — a taxiing
+aeroplane cannot cut diagonally across an apron, so the straight-line distance is
+never achievable and the guess is doing less work than it could.
 
-**Book Exercise 2 is open.** Build a 2D map where best-first returns a plan that is
-genuinely *worse*, not just found after more work. You need two routes to the goal:
-a long one whose first step decreases `Ĝ`, and a short one whose first step
-increases it. Add it to `planning::maps` in `src/grid.cpp`.
+Then notice the number that should bother you: A\* still examines **129 of 240
+squares with an exact guess**. Think about why. With the guess exact, every square
+on every staircase between the stand and the holding point scores the same 23, so
+A\* has no reason to prefer any of them and works through the lot. That plateau is
+the honest limit of heuristic search on open pavement.
+
+It is also why the capstone's cost function carries a hotspot penalty and a turn
+penalty. Not because those dominate taxi time — they do not — but because they
+**break ties**, and a search with no ties to break goes very much faster.
+
+## An open extension
+
+`deadEndPier` makes best first *work* harder, but it still returns the best route,
+because once it escapes the pier there is only one way round. Build a surface
+where best first comes back with a route that is genuinely longer.
+
+You need two routes to the holding point: a long one whose first move decreases
+the guess, and a short one whose first move increases it. Add it to
+`planning::maps` in `src/grid.cpp` and check it with `surface_demo`. This is the
+difference between a greedy planner that is slow and a greedy planner that is
+wrong, and it is worth seeing the second one with your own eyes before you ever
+trust one.
+
+---
+
+**In the book:** LaValle Section 2.2.2. The square-corner guess is the Manhattan
+heuristic and straight-line is Euclidean; comparing them is book Exercise 18, and
+the `openApron` numbers are its answer — 18(a) is why Manhattan wins, and the
+second half is the plateau, which motivates book Exercise 21. The open extension
+is book Exercise 2. `deadEndPier` is the 2D shadow of Figure 2.5.

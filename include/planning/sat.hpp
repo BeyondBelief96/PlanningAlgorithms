@@ -1,4 +1,17 @@
-// sat.hpp -- Section 2.5.3, planning as satisfiability.
+// sat.hpp -- Stop searching; write the problem down as a formula instead.
+//
+// A third way at the same turnaround.  Fix a number of steps K, give every fact
+// one true/false variable per step and every job one per step, and write
+// clauses saying: this is how things start, this is how they must end, a job
+// runs only if its preconditions hold, a job's effects hold afterwards, nothing
+// changes unless a job changed it, and only one job runs at a time.
+//
+// The formula is satisfiable exactly when a K-step plan exists, so a general
+// SAT solver -- which knows nothing whatever about aeroplanes -- plans the
+// turnaround for you.  That is the idea, and a good deal of industrial planning
+// is still done this way.
+//
+// [book] LaValle Section 2.5.3.
 #pragma once
 
 #include <optional>

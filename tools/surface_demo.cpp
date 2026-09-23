@@ -1,11 +1,14 @@
-// grid_demo -- Compare the search methods of Section 2.2 on a grid world.
+// surface_demo -- Every search method, on the same piece of airport.
 //
-// This is the harness for book Exercises 18-21: pick a map, run every search
-// method, and look at what each one costs you.
+// Pick a surface, plan the same taxi on it eleven ways, and look at what each
+// method cost you to get there.  Cost is minutes; expanded and generated are
+// how much pavement the planner had to think about.
 //
-//   grid_demo                 all maps
-//   grid_demo bugtrap         just one map
-//   grid_demo tiny --render   also draw the path
+//   surface_demo                 all three surfaces
+//   surface_demo pier            just the dead-end pier
+//   surface_demo stand --render  also draw the route
+//
+// [book] LaValle Section 2.2, and the harness for book Exercises 18-21.
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -33,10 +36,10 @@ void row(const std::string& label, const GridProblem& problem, const Plan& plan,
 
 void runMap(const std::string& name, const std::vector<std::string>& ascii, bool render) {
   const GridProblem problem = GridProblem::fromAscii(ascii);
-  std::cout << "\n=== " << name << " (" << problem.width() << "x" << problem.height() << ", "
-            << problem.numStates() << " states) ===\n\n";
+  std::cout << "\n=== " << name << " (" << problem.width() << "x" << problem.height()
+            << " squares, " << problem.numStates() << " of them) ===\n\n";
   std::cout << "  " << std::left << std::setw(22) << "method" << std::right << std::setw(9)
-            << "cost" << std::setw(8) << "steps" << std::setw(11) << "expanded" << std::setw(11)
+            << "minutes" << std::setw(8) << "moves" << std::setw(11) << "expanded" << std::setw(11)
             << "generated" << "\n";
 
   row("breadth first", problem, breadthFirstSearch(problem), render);
@@ -46,18 +49,18 @@ void runMap(const std::string& name, const std::vector<std::string>& ascii, bool
   row("A* (Euclidean)", problem, aStar(problem, problem.euclidean()), render);
   row("A* (zero == Dijkstra)", problem, aStar(problem, zeroHeuristic()), render);
   row("best first", problem, bestFirstSearch(problem, problem.manhattan()), render);
-  // Iterative deepening keeps no global visited set, so its running time is
-  // exponential in the plan length.  That is fine when the branching factor is
-  // large and states are rarely revisited -- and a grid is the opposite of
-  // that, so we only run it where it will finish this century.
+  // Iterative deepening keeps no record of where it has already been, so its
+  // running time is exponential in the number of moves.  That is a fine trade
+  // when a state is rarely reachable two ways -- and a grid of pavement is the
+  // exact opposite of that, so only run it where it will finish this century.
   const Plan shortest = breadthFirstSearch(problem);
   if (shortest.found && shortest.length() <= 12) {
     row("iterative deepening", problem, iterativeDeepening(problem, 40), render);
     row("IDA* (Manhattan)", problem, iterativeDeepeningAStar(problem, problem.manhattan()), render);
   } else {
     std::cout << "  " << std::left << std::setw(22) << "iterative deepening" << std::right
-              << "  skipped: the shortest plan is " << shortest.length()
-              << " actions, and depth-limited DFS with no visited set is exponential in that"
+              << "  skipped: the shortest route is " << shortest.length()
+              << " moves, and depth-limited search with no visited set is exponential in that"
               << std::endl;
   }
   row("backward Dijkstra", problem, backwardDijkstra(problem), render);
@@ -67,8 +70,11 @@ void runMap(const std::string& name, const std::vector<std::string>& ascii, bool
     const Stationary stationary = backwardValueIterationStationary(problem);
     const Plan plan = planFromPolicy(problem, stationary);
     row("value iteration", problem, plan, render);
-    std::cout << "  (value iteration swept the whole state space " << stationary.iterations
-              << " times; Dijkstra touched far fewer states for the same answer -- Section 2.3.3)\n";
+    std::cout << "  (that took " << stationary.iterations
+              << " sweeps of every square on the airport; Dijkstra touched a\n"
+              << "   fraction of them for the same answer.  What the sweeping buys is a\n"
+              << "   route from *every* square, not just this one -- which is what you\n"
+              << "   want when the aeroplane turns up somewhere you did not plan for.)\n";
   } catch (const std::exception& e) {
     std::cout << "  value iteration: " << e.what() << "\n";
   }
@@ -85,9 +91,9 @@ int main(int argc, char** argv) {
     else which = arg;
   }
 
-  if (which.empty() || which == "tiny") runMap("tiny", maps::tiny(), render);
-  if (which.empty() || which == "bugtrap") runMap("bugTrap", maps::bugTrap(), render);
-  if (which.empty() || which == "openroom") runMap("openRoom", maps::openRoom(), render);
+  if (which.empty() || which == "stand") runMap("stand area", maps::standArea(), render);
+  if (which.empty() || which == "pier") runMap("dead-end pier", maps::deadEndPier(), render);
+  if (which.empty() || which == "open") runMap("open apron", maps::openApron(), render);
   std::cout << "\n";
   return 0;
 }

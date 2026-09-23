@@ -1,126 +1,166 @@
-# 7. Dijkstra revisited — Section 2.3.3
+# 7. Two algorithms, one idea
 
-> Read alongside book pages 56–57.
 > No new exercise; this one ties Exercises 02, 07 and 08 together.
 
 You have now written two programs that compute the same numbers by visibly
-different means. Section 2.3.3 explains why.
+different means. This guide explains why, and — more usefully — why you would ever
+keep the slow one.
 
 ## The observation
 
-Look at the forward value iteration table for Example 2.5 again:
+Look at the forward table from guide 6 again, for an aeroplane on the apron:
 
 ```
-         a    b    c    d    e
- C*_1   inf    0  inf  inf  inf
- C*_2   inf    0    1    4  inf
- C*_3     2    0    1    2    5
- C*_4     2    0    1    2    3
+                  STAND 2  APRON  TWY A  HS 27 E  RWY 27
+ start               inf      0    inf      inf     inf
+ after 1 sweep       inf      0      1        4     inf
+ after 2 sweeps        2      0      1        2       5
+ after 3 sweeps        2      0      1        2       3
 ```
 
-Every sweep recomputes a value for all five states, but almost nothing changes.
-`b` is 0 from the start and stays there. `c` reaches 1 in the second sweep and
-never moves. The only cells doing any work are the handful on the frontier.
+Every sweep recomputes a number for all five places, and almost nothing changes.
+`APRON` is 0 from the start and stays there. `TWY A` reaches 1 in the first sweep
+and never moves again. The only cells doing any work are the handful on the
+frontier.
 
-Dijkstra's algorithm is value iteration that only touches those cells.
+**Dijkstra's algorithm is value iteration that only touches those cells.**
 
 ## The dictionary
 
-The book's mapping between the two algorithms is exact:
+The correspondence is exact:
 
-| In value iteration | In Dijkstra |
+| Sweeping the whole airport | Dijkstra |
 |---|---|
-| a state whose value is still `∞` | **unvisited** — no plan has reached it |
-| a state whose value has become stationary | **dead** — removed from `Q` |
-| a state with a finite but possibly improvable value | **alive** — in `Q` |
-| one sweep lowering a value | a relaxation along one edge |
+| a place whose number is still infinity | **unvisited** — nothing has reached it |
+| a place whose number has stopped changing | **dead** — taken out of the queue |
+| a place with a finite number that might still improve | **alive** — in the queue |
+| one sweep lowering a number | one relaxation along one edge |
 
-> In a sense, Dijkstra's algorithm is very much like the value iteration, except
-> that it efficiently maintains the set of states within which cost-to-go values
-> can change.
+> Dijkstra's algorithm is very much like value iteration, except that it
+> efficiently maintains the set of places within which the numbers can still
+> change.
 
-And the payoff:
+And at the end, both have computed the same thing.
 
-> At the end of both algorithms, the resulting values correspond to the
-> stationary, optimal cost-to-come, `C*`.
+You can watch it happen:
 
-You can see this directly in `grid_demo`. On `openRoom`:
-
-```
-  Dijkstra           cost 23   expanded 226
-  value iteration    cost 23   swept the whole state space 28 times
+```powershell
+./build/vs/Debug/surface_demo.exe open
 ```
 
-240 states × 28 sweeps ≈ 6,700 state updates, against Dijkstra's 226 expansions
-for the identical answer.
+```
+  Dijkstra           23.000 minutes   expanded 226
+  value iteration    23.000 minutes   swept every square 28 times
+```
 
-## So why keep value iteration at all?
+240 squares × 28 sweeps ≈ 6,700 updates, against Dijkstra's 226, for an identical
+answer.
 
-Because the conditions that make Dijkstra work are narrow, and value iteration
-survives their loss. Dijkstra's correctness rests on the induction in
-[guide 3](03-search-methods.md), which needs:
+## So why keep the slow one?
 
-1. **Nonnegative costs.** With a negative edge, popping the cheapest state no
-   longer proves its value is final. Value iteration tolerates negative costs as
-   long as there are no negative cycles.
-2. **A deterministic transition function.** Chapter 10 replaces `f(x, u)` with a
-   probability distribution over next states, and the `min` becomes a `min` over
-   an expectation. The value iteration recurrence absorbs that change essentially
-   unaltered. Dijkstra has nothing to say about it.
-3. **A known state.** Chapter 11 plans in *information spaces*, where the current
-   state is not observable. Value iteration carries over; the priority-queue
-   argument does not.
+Three reasons, and the third is the one that matters for the capstone.
 
-Which is why the book spends its time on value iteration even though Dijkstra
-wins on this chapter's problems. Section 2.3.3 closes with exactly that framing —
-value iteration is the general method, and Dijkstra is the special case that falls
-out "only under some special conditions."
+**1. Dijkstra needs every move to cost at least nothing.** Its correctness rests
+entirely on the induction in [guide 3](03-search-methods.md): the cheapest thing
+in the queue cannot be reached more cheaply, *because everything else in the queue
+already costs more and moves never refund you*. Introduce a negative move and the
+argument collapses. Value iteration tolerates negative costs perfectly well, as
+long as no cycle is negative.
 
-There is one more reason, and it is the one that matters most for Part II:
-**value iteration gives you `G*` everywhere, not just along one path.** Dijkstra
-stops the moment it pops the goal. Value iteration hands you a function over the
-whole state space, from which `u* = argmin[l(x, u) + G*(f(x, u))]` tells you what
-to do from *any* state, including ones you never intended to be in. That is a
-feedback plan, it is the subject of Chapter 8, and it is the reason `Stationary`
-carries a `policy` field.
+**2. Dijkstra needs to know where a move leads.** Not "probably leads" — leads.
+Once you are planning against an aircraft that may or may not make the turn, or a
+pushback whose duration is a distribution, the move no longer has one outcome and
+the minimisation becomes a minimisation over an expectation. The sweeping
+recurrence absorbs that change essentially unaltered. Dijkstra has nothing to say
+about it.
 
-## Book Exercise 23
+**3. Dijkstra needs to know where the aeroplane is.** This sounds like a
+guarantee and is not. Surface surveillance drops out. A transponder goes
+unserviceable. The aircraft reports a position that is eight metres from where
+its nose actually is. Planning when the state is not directly observable is a
+whole field, and the sweeping recurrence carries over into it; the priority-queue
+argument does not.
 
-> For a planning problem under Formulation 2.3, implement both Dijkstra's
-> algorithm and forward value iteration. Verify that these find the same plans.
-> Comment on their differences in performance.
+There is a fourth reason, and it is the one that runs straight into the capstone:
 
-You have already written both — Exercise 02 and Exercise 08. To do the comparison
-properly:
+> **Value iteration hands you the number for everywhere, not just along one
+> route.**
+
+Dijkstra stops the moment it takes the goal out of the queue. It has no opinion
+about the far side of the airport, because it never went there. Value iteration
+hands you a function over every place, from which
+
+```
+best move at x = argmin over moves of [ cost of the move + still to go(where it leads) ]
+```
+
+tells you what to do from *any* place, including ones the route never touched.
+
+That is why `Stationary` carries a `policy` field, why the capstone's Exercise 06
+is a backward sweep rather than a forward search, and why its Exercise 12 can
+replan without searching anything. An aeroplane that stopped twenty metres short
+of where the plan expected does not need a new plan. It needs to look up the
+number under its wheels.
+
+## A comparison worth doing yourself
+
+> Implement both Dijkstra and forward value iteration on the same problem. Verify
+> they find the same routes. Comment on the difference in performance.
+
+You have already written both — Exercise 02 and Exercise 08. To do it properly:
 
 ```cpp
-const GridProblem problem = GridProblem::fromAscii(maps::bugTrap());
+const GridProblem problem = GridProblem::fromAscii(maps::deadEndPier());
 const Plan viaDijkstra = dijkstra(problem);
-const StationaryForward viaValueIteration = forwardValueIterationStationary(problem);
+const StationaryForward viaSweeping = forwardValueIterationStationary(problem);
 
 // the numbers agree...
-assert(viaValueIteration.C[goal] == viaDijkstra.cost);
+assert(viaSweeping.C[goal] == viaDijkstra.cost);
 // ...but count the work
 const long long dijkstraUpdates = viaDijkstra.generated;
-const long long vitUpdates = 1LL * problem.numStates() * viaValueIteration.iterations;
+const long long sweepUpdates = 1LL * problem.numStates() * viaSweeping.iterations;
 ```
 
-Then ask the question the exercise is really driving at: is there a problem where
-value iteration wins? Try making the state space small and densely connected, so
-that Dijkstra's priority queue overhead dominates while value iteration's sweeps
-stay cheap. The answer is not always what you expect, and it is the reason both
-algorithms are still in use.
+Then ask the question this is really driving at: is there a problem where the
+sweeping wins outright? Try a small, densely connected state space, so that the
+priority queue's overhead dominates while the sweeps stay cheap. A taxiway graph
+of forty nodes where everything connects to everything is close to that shape.
+The answer is not always what you expect, and it is the reason both algorithms
+are still in use.
 
-## A thing worth noticing about `A*`
+## A thing worth noticing about A\*
 
-Since A* is Dijkstra with `C(x) + Ĝ(x)` as the key, and Dijkstra is value
-iteration with a frontier, A* is value iteration with a frontier *and* a hint about
-where the goal is. Heuristic search and dynamic programming are not two schools;
-they are two ends of one dial. Chapter 8 slides back toward the dynamic programming
-end, because a navigation function is worth more than a path when execution is
-uncertain.
+Since A\* is Dijkstra with "cost so far + guess" as the key, and Dijkstra is
+sweeping with a frontier, A\* is **sweeping with a frontier and a hint about where
+the goal is**.
+
+Heuristic search and dynamic programming are not two schools. They are two ends
+of one dial. Guide 6 sits at one end and guide 3 at the other, and the capstone
+uses both within one pipeline: a backward sweep for the cost-to-go over the whole
+taxiway graph, and an A\*-shaped search over poses that uses that sweep *as its
+guess*. Once you see that, Exercise 09 of the capstone stops looking like a new
+algorithm and starts looking like Exercise 03 with a better heuristic.
 
 ---
 
-Next: [the logic-based formulation](08-logic-formulation.md). A change of register:
-the state space stops being given and starts being *described*.
+## In the book
+
+LaValle Section 2.3.3, pages 56–57. The quoted dictionary line and the
+conclusion that both algorithms end with the stationary optimal cost-to-come `C*`
+are from that section, which closes by framing value iteration as the general
+method and Dijkstra as the special case that falls out "only under some special
+conditions".
+
+The three limitations above correspond to the book's: nonnegative costs, a
+deterministic transition function (Chapter 10 replaces `f(x, u)` with a
+distribution and the `min` with a `min` over an expectation), and an observable
+state (Chapter 11 plans in information spaces). The "number for everywhere"
+point is the feedback plan of Chapter 8, which is the largest thing Chapter 2
+sets up.
+
+The comparison exercise is book Exercise 23.
+
+---
+
+Next: [describing a job instead of drawing it](08-logic-formulation.md). A change
+of register — the state space stops being given and starts being *described*.

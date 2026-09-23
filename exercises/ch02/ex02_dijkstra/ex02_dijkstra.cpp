@@ -1,4 +1,4 @@
-// Exercise 02 -- Dijkstra's algorithm.
+// Exercise 02 -- The quickest route.
 //
 // Read exercises/ch02/ex02_dijkstra/README.md first.
 #include <queue>
@@ -9,20 +9,25 @@
 namespace planning {
 
 Plan dijkstra(const Problem& problem) {
-  // TODO(you): the same template as Exercise 01, with Q sorted by the
-  // cost-to-come C(x).
+  // TODO(you): the same template as Exercise 01, with Q ordered by how cheap
+  // it was to reach each place.  This is the first method here whose answer you
+  // would actually give a crew.
   //
-  //   - C(x_I) = 0, and every other state starts at infinity.
-  //   - When you generate x' = f(x, u), the candidate cost is C(x) + l(x, u).
-  //   - Line 12 of Figure 2.4 now has work to do: if x' is already in Q with a
-  //     larger cost, lower it and re-sort Q.
-  //   - std::priority_queue has no decrease-key.  The usual workaround is to
-  //     push a second entry and ignore an entry when you pop it if the state
-  //     is already dead.  Convince yourself this is safe before you write it --
-  //     the argument is the induction in Section 2.2.2.
-  //   - Test the goal when you *pop* a state, not when you generate it.  Write
-  //     yourself a note about why: it is the same reason C(x) only becomes
-  //     C*(x) at that moment.
+  //   - Where the aeroplane is costs 0; everywhere else starts at infinity.
+  //   - Reaching x' from x costs whatever x cost, plus the move.
+  //   - Meeting a place a second time now has work to do: if x' is already in Q
+  //     at a higher cost, lower it.
+  //   - std::priority_queue has no way to lower a key.  Push a second entry at
+  //     the lower cost and throw away stale ones as they surface.  Convince
+  //     yourself this is safe before you write it -- the argument is the
+  //     induction in the guide.
+  //   - Mark a place dead when you *take it out*, not when you put it in.  That
+  //     is the opposite of Exercise 01.
+  //   - Check for arrival on removal too.  A place's cost is only known to be
+  //     final at that moment, so returning when you *generate* the holding
+  //     point gives you a route that merely reaches it.
+  //
+  // [book] LaValle Section 2.2.2.
   (void)problem;
   return Plan{};
 }

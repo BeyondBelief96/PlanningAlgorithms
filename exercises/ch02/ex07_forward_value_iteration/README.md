@@ -1,6 +1,6 @@
-# Exercise 07 — Forward value iteration, fixed length
+# Exercise 07 — The cost already spent
 
-**Book:** Section 2.3.1.2, Figure 2.12 · **Guide:** [docs/ch02/05-optimal-fixed-length.md](../../../docs/ch02/05-optimal-fixed-length.md)
+**Guide:** [The answer for everywhere, on a fixed budget](../../../docs/ch02/05-optimal-fixed-length.md)
 
 ## Implement
 
@@ -8,35 +8,41 @@
 CostTable forwardValueIteration(const Problem& problem, int K);
 ```
 
-Equation (2.16):
+The mirror image of Exercise 06. For each place and each number of moves *made*,
+the cheapest way to be standing there:
 
 ```
-C*_{k+1}(x_{k+1}) = min over (x_k, u) with f(x_k, u) = x_{k+1}
-                        of [ C*_k(x_k) + l(x_k, u) ]
+already spent(place, after k+1 moves) = min over moves that arrive here of
+                                           [ already spent(where it came from, after k)
+                                             + cost of the move ]
 ```
 
-from `C*_1(x) = 0` at `x_I` and `inf` elsewhere. Return `K + 1` rows: row 0 is
-`C*_1`, row `k` is `C*_{k+1}`, matching Figure 2.12.
+starting from 0 where the aeroplane is and infinity everywhere else. Return
+`K + 1` rows: row 0 is zero moves made, row `k` is exactly `k` moves made.
 
 ## The two things this exercise exists to teach
 
 Both are asymmetries with Exercise 06, and both matter later.
 
-**The cost-to-come knows nothing about the goal.** Nothing in (2.16) mentions
-`X_G`. The goal only enters when you add `l_F` at the end. The test makes this
-explicit: it moves the goal to a different state and checks every row is
-unchanged. Backward value iteration is the reverse — it cannot even start without
-`X_G`, since `G*_F = l_F`.
+**The cost already spent does not know where you are going.** Nothing in the
+recurrence mentions the goal at all. The test makes this explicit: it re-clears
+the aircraft to a different destination and checks that every row is unchanged.
 
-**Forward needs `f^{-1}`, not `f`.** To fill in a value at `x` you must know who
-can *reach* `x`. `problem.predecessors(x)` hands it to you here, but in a real
-problem the backward transition may be far harder to compute than the forward one
-— and that is exactly why the book presents the backward version first even
-though moving forward from `x_I` feels more natural.
+What it cost to get somewhere depends on the airport and where you started, not on
+the clearance. Working backwards is the opposite — it cannot even start without
+knowing where the route is supposed to end.
+
+**Forwards needs to know how places are *reached*.** To fill in a value at `x` you
+must know who can get to `x`, not where `x` leads. `problem.predecessors(x)` hands
+it over here, but on a real surface graph — where the state carries a heading and
+arriving eastbound is not the reverse of departing westbound — the backward
+transition can be much harder to compute than the forward one. That is exactly why
+the backward form is usually presented first, even though starting from the
+aeroplane feels more natural.
 
 ## The trap
 
-Same `inf` handling as Exercise 06: skip a predecessor whose value is infinite
+Same infinity handling as Exercise 06: skip a predecessor whose value is infinite
 rather than adding to it.
 
 ## Run it
@@ -47,21 +53,35 @@ ctest --test-dir build/vs -C Debug -R ch02.ex07 --output-on-failure
 
 ## What the tests check
 
-Figure 2.12, cell by cell, for `figure2_8()` with `x_I = a` and `K = 4`:
+`departureTaxi()` from stand 2, budget of four, cell by cell:
 
 ```
-         a    b    c    d    e
- C*_1     0  inf  inf  inf  inf
- C*_2     2    2  inf  inf  inf
- C*_3     4    4    3    6  inf
- C*_4     4    6    5    4    7
- C*_5     6    6    5    6    5
+                  STAND 2  APRON  TWY A  HS 27 E  RWY 27
+ 0 moves made          0     inf    inf      inf     inf
+ 1 move made           2       2    inf      inf     inf
+ 2 moves made          4       4      3        6     inf
+ 3 moves made          4       6      5        4       7
+ 4 moves made          6       6      5        6       5
 ```
 
-Plus the goal-independence check, and book Exercise 1 at `K = 4` on
-`figure2_21()`: forward gives `C*_5(e) = 10`, backward gives `G*_1(a) = 10`.
+Plus the destination-independence check, and the route choice at a budget of four
+on `bypassTaxi()`: counting forwards from the stand and counting backwards from
+the holding point both give **ten minutes**. They must agree — it is the same
+taxi, measured from opposite ends.
 
-**A warning that catches people.** These are *fixed-length* tables. At `K = 5` on
-`figure2_21()` the answer is no longer 10 — a 5-action plan has to pad, and padding
-is not free without a termination action. Try it and see what the padding costs.
-Exercise 08 is what removes the restriction.
+## A warning that catches people
+
+These are *fixed-budget* tables. At a budget of five on `bypassTaxi()` the answer
+is no longer ten: a five-move route has to pad, and padding is not free while the
+aeroplane is not allowed to stop. Try it, and look at what it does with the spare
+move. Exercise 08 removes the budget.
+
+---
+
+**In the book:** LaValle Section 2.3.1.2. The recurrence is (2.16) from
+`C*_1(x) = 0` at `x_I`, and the table above is **Figure 2.12** exactly, with
+a → STAND 2, b → APRON, c → TWY A, d → HS 27 E, e → RWY 27; rows are `C*_1`
+through `C*_5`. The cross-check on `bypassTaxi()` (Figure 2.21) is book
+Exercise 1, and comparing the two directions is book Exercise 23. The book's own
+justification for presenting backward first —"even though it may appear
+superficially to be easier to progress from `x_I`" — is the asymmetry above.

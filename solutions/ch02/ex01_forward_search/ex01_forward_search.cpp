@@ -1,8 +1,11 @@
-// Reference solution -- Exercise 01: the general forward search template.
+// Reference solution -- Exercise 01: a route at all.
 //
-// Figure 2.4 is one algorithm with a hole in it.  The hole is the priority
-// function of Q.  Everything below is that figure, with the queue discipline
-// passed in.
+// The search template is one algorithm with a hole in it, and the hole is
+// "which place comes out of Q next".  Everything below is that template with
+// the queue discipline passed in -- which is why Exercises 02 to 05 are each a
+// few lines rather than a new program.
+//
+// [book] LaValle Figure 2.4.
 #include <deque>
 #include <vector>
 
@@ -22,7 +25,7 @@ Plan forwardSearch(const Problem& problem, Discipline discipline) {
   Plan stats;
   std::deque<State> q;
 
-  // 1  Q.Insert(x_I) and mark x_I as visited
+  // 1  put where the aeroplane is into Q, and mark it visited
   const State start = problem.initialState();
   q.push_back(start);
   visited[start] = true;
@@ -41,7 +44,7 @@ Plan forwardSearch(const Problem& problem, Discipline discipline) {
     }
     ++stats.expanded;
 
-    // 4  if x in X_G, return SUCCESS
+    // 4  if x will do, return SUCCESS
     if (problem.isGoal(x)) {
       Plan plan = reconstructForward(problem, x, parent, parentAction);
       plan.expanded = stats.expanded;

@@ -1,0 +1,27 @@
+{
+  "name": "planning-algorithms",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Planning algorithms, built up on an airport surface: twelve taxi problems and a twelve-step autonomous taxi planner.",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "test": "vitest run --project yours",
+    "test:watch": "vitest --project yours",
+    "test:reference": "vitest run --project reference",
+    "test:all": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test",
+    "surface": "tsx tools/surface-demo.ts",
+    "turnaround": "tsx tools/turnaround-demo.ts",
+    "taxi": "tsx tools/taxi-demo.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

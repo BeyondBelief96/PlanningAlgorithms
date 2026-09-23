@@ -1,7 +1,18 @@
-// strips.hpp -- Section 2.4, the STRIPS-like representation (Formulation 2.4).
+// strips.hpp -- Describing a task instead of drawing its state space.
 //
-// The data types and the two example models below are given.  The conversion
-// to a state space (Section 2.4.2) is Exercise 09.
+// The taxi is only half of a turnaround.  Before an aeroplane can go anywhere
+// somebody has to load the hold and shut the door, connect and then pull the
+// ground power, fit and then remove the towbar, take out the chocks.  Those
+// jobs have preconditions and effects rather than coordinates, and writing
+// their state space down by hand is hopeless: ten yes/no facts about a
+// turnaround already make 1024 states.
+//
+// So you describe the facts and the jobs, and let the state space be implied.
+// That description is what Section 2.4 formalises.  The data types and the two
+// example models below are given; turning one into a state space you can search
+// (Section 2.4.2) is Exercise 09.
+//
+// [book] LaValle Section 2.4, Formulation 2.4.
 #pragma once
 
 #include <string>
@@ -63,25 +74,45 @@ using StripsState = unsigned long long;
 StripsState initialMask(const StripsProblem& problem);
 std::string maskToString(const StripsProblem& problem, StripsState mask);
 
-// Example 2.6 -- putting two batteries into a flashlight.
-//   atoms:      On(Cap, Flashlight), In(Battery1, Flashlight), In(Battery2, Flashlight)
-//   operators:  PlaceCap, RemoveCap, Insert(Battery1), Insert(Battery2)
-//   S = {On(Cap, Flashlight)}
-//   G = {On(Cap, F), In(Battery1, F), In(Battery2, F)}
-// The shortest plan is (RemoveCap, Insert(B1), Insert(B2), PlaceCap).
-StripsProblem flashlightProblem();
+// Loading the hold: two containers to go in, and the door has to end up shut.
+//
+//   atoms:      Closed(Door, Hold), Loaded(ULD1, Hold), Loaded(ULD2, Hold)
+//   operators:  CloseDoor, OpenDoor, Load(ULD1), Load(ULD2)
+//   S = {Closed(Door, Hold)}                     the aeroplane arrives shut
+//   G = {Closed(Door, Hold), Loaded(ULD1, Hold), Loaded(ULD2, Hold)}
+//
+// The shortest plan is (OpenDoor, Load(ULD1), Load(ULD2), CloseDoor) -- four
+// jobs, and the first of them *undoes* part of the goal.  A planner that
+// refuses to move away from the goal never solves this, which is the whole
+// reason the example is here.
+//
+// A ULD is a unit load device, the container an aeroplane's hold is loaded in.
+//
+// [book] LaValle Example 2.6, the flashlight, relabelled atom for atom:
+// On(Cap) -> Closed(Door), In(Battery_i) -> Loaded(ULD_i).
+StripsProblem cargoHoldProblem();
 
-// Book Exercise 14 -- a robot notices the room is dark, walks to the light
-// switch, and flips it.
-//   atoms:      At(Robot, Switch), On(Light), Dark(Room)
-//   operators:  MoveToSwitch, MoveAway, FlipOn, FlipOff
-StripsProblem lightSwitchProblem();
+// Ground power: the aeroplane is running off its own battery, and somebody has
+// to walk to the panel and connect the ground power unit.
+//
+//   atoms:      At(Crew, Panel), Connected(Gpu, Aircraft), OnBattery(Aircraft)
+//   operators:  WalkToPanel, WalkAway, ConnectGpu, DisconnectGpu
+//   S = {OnBattery(Aircraft)}
+//   G = {Connected(Gpu, Aircraft), !OnBattery(Aircraft)}
+//
+// Small enough to trace by hand, and the plan is (WalkToPanel, ConnectGpu).
+// Note that the goal names a *negative* literal, which the cargo hold does not.
+//
+// [book] LaValle book Exercise 14, the light switch: At(Robot, Switch) ->
+// At(Crew, Panel), On(Light) -> Connected(Gpu), Dark(Room) -> OnBattery.
+StripsProblem groundPowerProblem();
 
 // --- Exercise 09 -----------------------------------------------------------
 
-// Adapts a StripsProblem to the Problem interface of Section 2.1, so that the
-// search methods of Section 2.2 run on it unchanged.  States are the bit masks
-// above, reinterpreted as integers in [0, 2^|atoms|).
+// Adapts a StripsProblem to the same Problem interface the taxi graphs use, so
+// that every search method you wrote for Section 2.2 runs on a turnaround
+// description unchanged.  States are the bit masks above, reinterpreted as
+// integers in [0, 2^|atoms|).
 class StripsStateSpace : public Problem {
  public:
   explicit StripsStateSpace(StripsProblem problem);

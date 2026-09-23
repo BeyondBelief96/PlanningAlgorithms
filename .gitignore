@@ -1,6 +1,13 @@
+# C++ (the capstone, until it is ported)
 build/
 out/
 .vs/
 .cache/
 compile_commands.json
 *.user
+
+# TypeScript / Node
+node_modules/
+*.tsbuildinfo
+.vitest/
+coverage/

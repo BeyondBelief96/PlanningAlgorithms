@@ -16,7 +16,8 @@ CostToGo computeCostToGo(const TaxiGraph&, const PermissionSet&, const EdgeFilte
 std::vector<DirectedEdge> extractGraphRoute(const CostToGo&, const DirectedEdge& start, int k);
 ```
 
-Chapter 2, Section 2.2.3, run backwards. Same priority queue, same stale-entry
+[Part 1's Exercise 05](../../ch02/ex05_backward_bidirectional/README.md), run
+backwards. Same priority queue, same stale-entry
 discard, same induction. Two things are different.
 
 **The state is a directed edge,** so heading is part of the state and a turn can

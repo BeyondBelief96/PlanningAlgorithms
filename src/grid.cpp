@@ -7,7 +7,7 @@
 namespace planning {
 namespace {
 
-// Action ordering: N, E, S, W, then NE, SE, SW, NW.
+// Action ordering: N, E, S, W, then NE, SE, SW, NW.  North is row 0.
 constexpr int kDeltaRow[8] = {-1, 0, 1, 0, -1, 1, 1, -1};
 constexpr int kDeltaCol[8] = {0, 1, 0, -1, 1, 1, -1, -1};
 
@@ -78,6 +78,9 @@ std::vector<Transition> GridProblem::predecessors(State x) const {
   // The grid's action set is symmetric: u leads from x' to x exactly when the
   // opposite action leads from x to x'.  We still report u, the action that
   // must be applied at x' -- that is what Transition means for a predecessor.
+  //
+  // Enjoy it while it lasts.  The moment the state carries a heading, as it
+  // does in the capstone, backwards stops being forwards reversed.
   std::vector<Transition> result;
   if (x < 0 || x >= numStates() || blocked_[x]) return result;
   const auto [r, c] = coords(x);
@@ -147,7 +150,16 @@ std::string GridProblem::render(const Plan& plan) const {
 
 namespace maps {
 
-const std::vector<std::string>& tiny() {
+const std::vector<std::string>& standArea() {
+  // A stand at the top left, a pier building running down the middle, and the
+  // holding position on the far side of it.  The shortest route is nine moves
+  // rather than the seven the crow would fly, because the pier is in the way.
+  //
+  //     .......     row 0   apron lane along the top of the pier
+  //     .S..#..     row 1   S on stand, '#' the pier
+  //     ....#..     row 2
+  //     ....#.G     row 3   G holding short, east of the pier
+  //     .......     row 4   apron lane along the bottom
   static const std::vector<std::string> m = {
       ".......",
       ".S..#..",
@@ -158,17 +170,23 @@ const std::vector<std::string>& tiny() {
   return m;
 }
 
-const std::vector<std::string>& bugTrap() {
-  // A concave pocket whose only opening faces *away* from the goal.  Greedy
-  // best-first search walks straight at the goal, wedges itself against the
-  // right-hand wall, and has to exhaust the pocket before it will take a step
-  // that increases the heuristic.
+const std::vector<std::string>& deadEndPier() {
+  // A row of stands inside a pier that is closed on three sides, with its one
+  // opening facing west -- away from the holding position in the south-east.
   //
-  // It still finds the optimal path here, because once it escapes there is only
-  // one way round.  Building a map where best-first comes back with a plan that
-  // is actually worse is book Exercise 2 -- see docs/ch02/03-search-methods.md.
+  // Any method that only steers towards the goal taxis east, wedges the
+  // aeroplane against the inside of the pier, and has to exhaust the whole
+  // pocket before it will accept a move that increases the distance to the
+  // goal.  This is the surface equivalent of taxiing into a cul-de-sac between
+  // two piers and needing a tow to get out.
   //
-  // Manhattan distance from S to G is 14.  The shortest plan is 28 actions.
+  // It still finds the shortest route here, because once it escapes there is
+  // only one way round.  Building a surface where the greedy method comes back
+  // with a route that is genuinely longer is book Exercise 2 -- see
+  // docs/ch02/03-search-methods.md.
+  //
+  // Straight-line distance from S to G is 14 squares.  The shortest route is 28
+  // moves: exactly twice as far, all of it spent getting out of the pier.
   static const std::vector<std::string> m = {
       ".....................",
       ".....................",
@@ -184,7 +202,12 @@ const std::vector<std::string>& bugTrap() {
   return m;
 }
 
-const std::vector<std::string>& openRoom() {
+const std::vector<std::string>& openApron() {
+  // Open apron with one blocked corner -- a closed stand and the pavement
+  // behind it.  Nothing here is hard to get round; what makes this surface
+  // interesting is that there are hundreds of routes of *exactly* equal cost
+  // between S and G, so an uninformed method fans out over the whole apron and
+  // an informed one need not.
   static const std::vector<std::string> m = {
       "....................",
       "....................",

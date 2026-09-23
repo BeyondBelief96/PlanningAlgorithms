@@ -1,7 +1,13 @@
 // graphs.hpp -- Explicitly enumerated state transition graphs.
 //
-// Given library code.  These are the small worked examples from the book; the
-// tests check your algorithms against the numbers LaValle prints.
+// Given library code.  Two hand-sized taxi graphs: a departure taxi out to the
+// holding position, and a route choice between a long leg and a bypass.  They
+// are sketches -- minutes on a napkin, not metres on a chart -- and they exist
+// so that you can check a cost table by eye.
+//
+// Both are relabellings of the worked examples in LaValle Chapter 2 (Figures
+// 2.8 and 2.21), edge for edge and cost for cost, so every number the book
+// prints is still a number your code has to produce.  See docs/ch02/00-notation.md.
 #pragma once
 
 #include <string>
@@ -45,26 +51,48 @@ class GraphProblem : public Problem {
   std::vector<State> goals_;
 };
 
-// Figure 2.8 -- the five-state example used for Examples 2.3 and 2.5.
+// The departure taxi.  An aeroplane on stand 2 has to reach the holding
+// position short of runway 27 at taxiway E.
 //
-//   a -> a  (2)   a -> b  (2)
-//   b -> c  (1)   b -> d  (4)
-//   c -> d  (1)   c -> a  (1)
-//   d -> c  (1)   d -> e  (1)
-//   e has no outgoing edges, so d is unreachable from e.
+//        STAND 2 --(2)-> STAND 2      hold at the stand, engines running
+//        STAND 2 --(2)-> APRON        push back and start the taxi
+//        APRON   --(1)-> TWY A        turn onto the parallel taxiway
+//        APRON   --(4)-> HS 27 E      the long way round, on the apron lanes
+//        TWY A   --(1)-> HS 27 E      up to the holding position
+//        TWY A   --(1)-> STAND 2      give up and go back to the stand
+//        HS 27 E --(1)-> TWY A        abandon the crossing, back onto A
+//        HS 27 E --(1)-> RWY 27       line up, once cleared
 //
-// Defaults: x_I = a, X_G = {d}.
-GraphProblem figure2_8();
+// Costs are minutes.  RWY 27 has no outgoing edges: an aeroplane that has
+// entered the runway has left the taxi problem, and there is no legal edge that
+// brings it back to the holding position.  That is why every table in Section
+// 2.3 shows infinity in the RWY 27 column.
+//
+// Defaults: x_I = STAND 2, X_G = {HS 27 E} -- a departure taxi is finished when
+// the aeroplane is holding short, not when it is airborne.
+//
+// [book] LaValle Figure 2.8, with a b c d e renamed in that order.
+GraphProblem departureTaxi();
 
-// Figure 2.21 -- the five-state problem of book Exercise 1.
+// The route choice.  Stand 1 to the holding position short of runway 36 at the
+// west side, where the obvious route is not the quick one.
 //
-//   a -> b  (2)
-//   b -> a  (1)   b -> c  (4)
-//   c -> d  (3)   c -> e  (7)
-//   d -> c  (1)   d -> d  (1)   d -> e  (1)
-//   e has no outgoing edges.
+//        STAND 1 --(2)-> APRON
+//        APRON   --(1)-> STAND 1      return to stand
+//        APRON   --(4)-> TWY A
+//        TWY A   --(3)-> TWY B        cut north on the connector
+//        TWY A   --(7)-> HS 36 W      stay on A, all the way round the field
+//        TWY B   --(1)-> TWY A
+//        TWY B   --(1)-> TWY B        hold on B
+//        TWY B   --(1)-> HS 36 W
 //
-// Defaults: x_I = a, X_G = {e}.
-GraphProblem figure2_21();
+// Staying on A is three legs and thirteen minutes.  Cutting north through B is
+// four legs and ten.  Fewest turns is not quickest, and this graph is built to
+// make an algorithm choose.
+//
+// Defaults: x_I = STAND 1, X_G = {HS 36 W}.
+//
+// [book] LaValle Figure 2.21, the graph of book Exercise 1.
+GraphProblem bypassTaxi();
 
 }  // namespace planning

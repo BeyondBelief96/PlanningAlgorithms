@@ -1,8 +1,9 @@
 # Capstone — Airport Surface Movement Planning
 
-Chapter 2 gave you a state space and asked you to search it. This asks something
-harder: build a planner that is **allowed** to be wrong about the route, and is
-**never** allowed to be wrong about which piece of concrete the aeroplane is on.
+Part 1 gave you an airport small enough to print and asked you to search it.
+This asks something harder: build a planner that is **allowed** to be wrong about
+the route, and is **never** allowed to be wrong about which piece of concrete the
+aeroplane is on.
 
 An autonomous aircraft taxiing at a real airport is a planning problem with an
 unusual shape. The cost function barely matters — a taxi route that is thirty
@@ -60,9 +61,9 @@ pages and it is the whole design.
 
 The capstone is not in LaValle, but almost all of it is.
 
-- **Chapter 2** is the skeleton. Exercise 06 is Dijkstra run backwards
-  (Section 2.2.3) over a product state space; Exercise 09 is your A\* from
-  Exercise 03 with poses instead of integers.
+- **Chapter 2**, which is [Part 1](../ch02/README.md), is the skeleton.
+  Exercise 06 is Dijkstra run backwards (Section 2.2.3) over a product state
+  space; Exercise 09 is your A\* from Exercise 03 with poses instead of squares.
 - **Chapters 3–4** are Exercise 01. Shrinking the allowed polygons by the
   aircraft's error budget is exactly the configuration-space construction of
   Section 4.3, done crudely enough to stay fast.
@@ -94,7 +95,7 @@ Short, fiddly, and the source of most of the capstone's refusals. Both exercises
 are mostly about being specific in the failure message.
 
 **Sitting 3 — the search (guide 3; exercises 05–06).**
-Chapter 2 again, over a state space with three things in it. The directed-edge
+Part 1 again, over a state space with three things in it. The directed-edge
 state is what makes turn feasibility checkable; the route index is what turns
 "via A, D, B, E" into a shortest-path problem rather than a post-filter.
 
@@ -109,7 +110,7 @@ monitor being *simple* is the feature.
 
 ## Working style
 
-Same as Chapter 2, with one wrinkle.
+Same as Part 1, with one wrinkle.
 
 1. Read the guide for the step in `docs/capstone/`.
 2. Read `exercises/capstone/exNN_*/README.md` — the brief, the traps, the checks.

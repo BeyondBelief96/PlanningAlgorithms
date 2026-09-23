@@ -1,14 +1,17 @@
-// Reference solution -- Exercise 07: forward value iteration, fixed length.
+// Reference solution -- Exercise 07: the cost already spent.
 //
-// The mirror of Exercise 06, equation (2.16):
+// The mirror of Exercise 06:
 //
-//     C*_{k+1}(x_{k+1}) = min over (x_k, u) with f(x_k, u) = x_{k+1}
-//                             of [ C*_k(x_k) + l(x_k, u) ]
+//     alreadySpent(place, after k+1) = min over moves arriving here of
+//                                        [ alreadySpent(where it came from,
+//                                            after k) + cost of the move ]
 //
-// Two things change.  The boundary condition now involves x_I rather than X_G,
-// and the sweep needs f^{-1}: to fill in a value at x you must know who can
-// reach x, not where x leads.  That asymmetry is why LaValle presents the
-// backward version first.
+// Two things change.  The boundary row is now about where the aeroplane *is*
+// rather than where it is going, and the sweep needs to know how places are
+// reached rather than where they lead.  That asymmetry is why the backward form
+// is usually presented first.
+//
+// [book] Section 2.3.1.2, equation (2.16).
 #include <algorithm>
 #include <vector>
 
@@ -21,8 +24,9 @@ CostTable forwardValueIteration(const Problem& problem, int K) {
   CostTable rows;
   rows.reserve(static_cast<std::size_t>(K) + 1);
 
-  // Row 0 is C*_1: zero at x_I, infinity elsewhere.  Note that nothing here
-  // mentions X_G -- the goal only enters when l_F is added at the end.
+  // Row 0: zero where the aeroplane is, infinity elsewhere.  Note that nothing
+  // here mentions where it is *going* -- the destination only enters when the
+  // final cost is added at the end.
   std::vector<double> current(n, kInfinity);
   current[problem.initialState()] = 0.0;
   rows.push_back(current);

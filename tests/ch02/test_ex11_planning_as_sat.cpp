@@ -37,15 +37,20 @@ bool planWorks(const StripsProblem& problem, const std::vector<int>& plan) {
 
 }  // namespace
 
+// Planning as satisfiability: stop searching for the turnaround and instead
+// write down a Boolean formula that is true exactly when a K-job turnaround
+// exists, then hand it to a SAT solver.  Every fact gets one variable per
+// stage, every job gets one per step, and the clauses say what has to hold.
+
 TEST(the_variable_count_matches_the_stage_tagging) {
-  // 3 atoms over K + 1 = 3 stages, plus 4 operators over K = 2 stages.
-  const SatEncoding encoding = encodePlanningAsSat(lightSwitchProblem(), 2);
+  // 3 facts over K + 1 = 3 stages, plus 4 jobs over K = 2 steps.
+  const SatEncoding encoding = encodePlanningAsSat(groundPowerProblem(), 2);
   CHECK_EQ(encoding.cnf.numVars, 3 * 3 + 4 * 2);
   CHECK(!encoding.cnf.clauses.empty());
 }
 
-TEST(two_stages_are_enough_for_the_light_switch) {
-  const StripsProblem problem = lightSwitchProblem();
+TEST(two_steps_are_enough_to_get_the_ground_power_on) {
+  const StripsProblem problem = groundPowerProblem();
   const SatEncoding encoding = encodePlanningAsSat(problem, 2);
   const auto assignment = dpll(encoding.cnf);
 
@@ -54,47 +59,51 @@ TEST(two_stages_are_enough_for_the_light_switch) {
 
   const std::vector<int> plan = extractPlan(encoding, *assignment);
   CHECK_EQ(plan.size(), std::size_t{2});
-  CHECK_EQ(problem.operators[plan[0]].name, std::string("MoveToSwitch"));
-  CHECK_EQ(problem.operators[plan[1]].name, std::string("FlipOn"));
+  CHECK_EQ(problem.operators[plan[0]].name, std::string("WalkToPanel"));
+  CHECK_EQ(problem.operators[plan[1]].name, std::string("ConnectGpu"));
   CHECK(planWorks(problem, plan));
 }
 
-TEST(one_stage_is_not_enough_for_the_light_switch) {
-  // The robot has to walk to the switch before it can flip it.
-  const SatEncoding encoding = encodePlanningAsSat(lightSwitchProblem(), 1);
+TEST(one_step_is_not_enough) {
+  // Somebody has to walk to the panel before they can connect anything, and
+  // the formula is unsatisfiable rather than approximately satisfiable.  A SAT
+  // encoding cannot fudge a precondition.
+  const SatEncoding encoding = encodePlanningAsSat(groundPowerProblem(), 1);
   CHECK(!dpll(encoding.cnf).has_value());
 }
 
-TEST(zero_stages_works_only_if_the_goal_already_holds) {
-  CHECK(!dpll(encodePlanningAsSat(lightSwitchProblem(), 0).cnf).has_value());
-  CHECK(!dpll(encodePlanningAsSat(flashlightProblem(), 0).cnf).has_value());
+TEST(zero_steps_only_works_if_the_job_is_already_done) {
+  CHECK(!dpll(encodePlanningAsSat(groundPowerProblem(), 0).cnf).has_value());
+  CHECK(!dpll(encodePlanningAsSat(cargoHoldProblem(), 0).cnf).has_value());
 }
 
-TEST(the_flashlight_needs_four_stages_and_no_fewer) {
-  CHECK(!dpll(encodePlanningAsSat(flashlightProblem(), 3).cnf).has_value());
-  CHECK(dpll(encodePlanningAsSat(flashlightProblem(), 4).cnf).has_value());
+TEST(the_hold_needs_four_steps_and_no_fewer) {
+  CHECK(!dpll(encodePlanningAsSat(cargoHoldProblem(), 3).cnf).has_value());
+  CHECK(dpll(encodePlanningAsSat(cargoHoldProblem(), 4).cnf).has_value());
 }
 
-TEST(the_search_over_K_finds_the_shortest_plan) {
-  const StripsProblem problem = flashlightProblem();
+TEST(trying_each_K_in_turn_finds_the_shortest_turnaround) {
+  const StripsProblem problem = cargoHoldProblem();
   const auto plan = planAsSatisfiability(problem, 6);
 
   CHECK(plan.has_value());
   CHECK_EQ(plan->size(), std::size_t{4});
   CHECK(planWorks(problem, *plan));
 
-  // Equation (2.24): take the cap off, put both batteries in, put the cap back.
-  // Which battery goes first is genuinely free, so do not assume an order.
-  CHECK_EQ(problem.operators[plan->front()].name, std::string("RemoveCap"));
-  CHECK_EQ(problem.operators[plan->back()].name, std::string("PlaceCap"));
+  // Open the door, load both containers, shut the door.  Which container goes
+  // in first is genuinely free, so the test must not assume an order -- and
+  // neither should a ramp agent reading the plan.
+  // [book] equation (2.24).
+  CHECK_EQ(problem.operators[plan->front()].name, std::string("OpenDoor"));
+  CHECK_EQ(problem.operators[plan->back()].name, std::string("CloseDoor"));
   std::vector<int> middle{(*plan)[1], (*plan)[2]};
   std::sort(middle.begin(), middle.end());
-  CHECK_EQ(middle[0], 2);  // Insert(Battery1)
-  CHECK_EQ(middle[1], 3);  // Insert(Battery2)
+  CHECK_EQ(middle[0], 2);  // Load(ULD1)
+  CHECK_EQ(middle[1], 3);  // Load(ULD2), in either order
 }
 
-TEST(a_satisfiable_formula_yields_a_complete_assignment) {
-  const SatEncoding encoding = encodePlanningAsSat(lightSwitchProblem(), 3);
+TEST(a_satisfiable_formula_assigns_every_variable) {
+  const SatEncoding encoding = encodePlanningAsSat(groundPowerProblem(), 3);
   const auto assignment = dpll(encoding.cnf);
   CHECK(assignment.has_value());
   CHECK_EQ(assignment->size(), static_cast<std::size_t>(encoding.cnf.numVars));

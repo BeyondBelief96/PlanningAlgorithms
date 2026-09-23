@@ -1,11 +1,16 @@
-// Reference solution -- Exercise 06: backward value iteration, fixed length.
+// Reference solution -- Exercise 06: the cost still to go, on a fixed budget.
 //
-// The whole of Section 2.3.1.1 is equation (2.11):
+// The whole idea is one line:
 //
-//     G*_k(x_k) = min over u_k of [ l(x_k, u_k) + G*_{k+1}(f(x_k, u_k)) ]
+//     stillToGo(place, k moves left) = min over moves of
+//                                        [ cost of the move
+//                                          + stillToGo(where it leads, k-1) ]
 //
-// started from the boundary condition G*_F = l_F.  One sweep over X per stage,
-// K sweeps in all, O(K |X| |U|) total -- against O(|U|^K) for enumerating plans.
+// started from a boundary row of finalCost().  One sweep over every place per
+// row, K sweeps in all: K x places x options, against options^K for
+// enumerating routes.  For the open apron that is 22,000 against 7e13.
+//
+// [book] Section 2.3.1.1, equation (2.11), from G*_F = l_F.
 #include <algorithm>
 #include <vector>
 
@@ -44,7 +49,7 @@ Plan planFromBackwardValues(const Problem& problem, const CostTable& G) {
   const int K = static_cast<int>(G.size()) - 1;
 
   const State start = problem.initialState();
-  if (G[K][start] == kInfinity) return plan;  // no K-step plan reaches X_G
+  if (G[K][start] == kInfinity) return plan;  // no route of exactly K moves
 
   plan.found = true;
   plan.states.push_back(start);

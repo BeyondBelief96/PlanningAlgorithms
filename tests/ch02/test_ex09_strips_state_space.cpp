@@ -37,79 +37,90 @@ Plan localBfs(const Problem& problem) {
 
 }  // namespace
 
-// atoms are, in order: On(Cap, F), In(Battery1, F), In(Battery2, F).
-// So bit 0 is the cap, bit 1 is battery 1, bit 2 is battery 2.
-TEST(three_complementary_pairs_make_eight_states) {
-  const StripsStateSpace space(flashlightProblem());
+// The hold-loading atoms, in order:
+//   bit 0   Closed(Door, Hold)
+//   bit 1   Loaded(ULD1, Hold)
+//   bit 2   Loaded(ULD2, Hold)
+// Three yes/no facts about the turnaround, so eight possible states of it.
+TEST(three_facts_about_the_hold_make_eight_states) {
+  const StripsStateSpace space(cargoHoldProblem());
   CHECK_EQ(space.numStates(), 8);
 }
 
-TEST(the_initial_state_is_cap_on_and_no_batteries) {
-  const StripsStateSpace space(flashlightProblem());
-  CHECK_EQ(space.initialState(), 0b001);
+TEST(the_aeroplane_arrives_shut_and_empty) {
+  const StripsStateSpace space(cargoHoldProblem());
+  CHECK_EQ(space.initialState(), 0b001);  // door closed, nothing loaded
 }
 
-TEST(the_goal_set_is_a_single_state_here) {
-  const StripsStateSpace space(flashlightProblem());
+TEST(the_hold_is_only_finished_one_way) {
+  const StripsStateSpace space(cargoHoldProblem());
   const std::vector<State> goals = space.goalStates();
   CHECK_EQ(goals.size(), std::size_t{1});
   CHECK_EQ(goals.front(), 0b111);
-  CHECK(space.isGoal(0b111));
-  CHECK(!space.isGoal(0b011));
+  CHECK(space.isGoal(0b111));   // loaded and shut
+  CHECK(!space.isGoal(0b011));  // one container still on the tug
 }
 
-TEST(only_remove_cap_applies_in_the_initial_state) {
-  const StripsStateSpace space(flashlightProblem());
+TEST(with_the_door_shut_there_is_exactly_one_thing_to_do) {
+  const StripsStateSpace space(cargoHoldProblem());
   const std::vector<Transition> out = space.successors(0b001);
   CHECK_EQ(out.size(), std::size_t{1});
-  CHECK_EQ(space.strips().operators[out.front().u].name, std::string("RemoveCap"));
+  CHECK_EQ(space.strips().operators[out.front().u].name, std::string("OpenDoor"));
   CHECK_EQ(out.front().x, 0b000);
+  // And note that opening the door *undoes* part of the goal.  Any method that
+  // only accepts jobs moving towards the goal is stuck on the first one.
 }
 
-TEST(with_the_cap_off_three_operators_apply) {
-  const StripsStateSpace space(flashlightProblem());
-  // PlaceCap, Insert(Battery1), Insert(Battery2) -- but not RemoveCap.
+TEST(with_the_door_open_there_are_three) {
+  const StripsStateSpace space(cargoHoldProblem());
+  // CloseDoor, Load(ULD1), Load(ULD2) -- but not OpenDoor, it is open already.
   CHECK_EQ(space.successors(0b000).size(), std::size_t{3});
 }
 
-TEST(effects_leave_unmentioned_pairs_alone) {
-  const StripsProblem problem = flashlightProblem();
+TEST(loading_one_container_does_not_unload_the_other) {
+  const StripsProblem problem = cargoHoldProblem();
   const StripsStateSpace space(problem);
-  // Insert(Battery1) from "cap off, battery 2 already in" must keep battery 2.
-  const Operator& insert1 = problem.operators[2];
-  CHECK_EQ(insert1.name, std::string("Insert(Battery1)"));
-  CHECK(space.applicable(0b100, insert1));
-  CHECK_EQ(space.apply(0b100, insert1), StripsState{0b110});
-  CHECK(!space.applicable(0b101, insert1));  // the cap is on
-  CHECK(!space.applicable(0b110, insert1));  // battery 1 is already in
+  // Loading ULD1 into an open hold that already holds ULD2 must leave ULD2
+  // where it is.  Nothing in the operator says so; it is the standing rule that
+  // a job changes only what it names, and it is the usual bug here.
+  const Operator& load1 = problem.operators[2];
+  CHECK_EQ(load1.name, std::string("Load(ULD1)"));
+  CHECK(space.applicable(0b100, load1));
+  CHECK_EQ(space.apply(0b100, load1), StripsState{0b110});
+  CHECK(!space.applicable(0b101, load1));  // the door is shut
+  CHECK(!space.applicable(0b110, load1));  // ULD1 is already aboard
 }
 
-TEST(only_place_cap_can_reach_the_goal) {
-  const StripsStateSpace space(flashlightProblem());
+TEST(the_last_job_is_always_shutting_the_door) {
+  const StripsStateSpace space(cargoHoldProblem());
   const std::vector<Transition> in = space.predecessors(0b111);
   CHECK_EQ(in.size(), std::size_t{1});
   CHECK_EQ(in.front().x, 0b110);
-  CHECK_EQ(space.strips().operators[in.front().u].name, std::string("PlaceCap"));
+  CHECK_EQ(space.strips().operators[in.front().u].name, std::string("CloseDoor"));
 }
 
-TEST(searching_the_state_space_recovers_the_plan_of_equation_2_24) {
-  const StripsStateSpace space(flashlightProblem());
+TEST(searching_the_description_recovers_the_turnaround_in_four_jobs) {
+  // Open the door, load both containers, shut the door.  Nobody wrote that
+  // sequence down anywhere: it falls out of searching a state space that was
+  // never drawn, only described.
+  // [book] equation (2.24).
+  const StripsStateSpace space(cargoHoldProblem());
   const Plan plan = localBfs(space);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(space, plan);
   CHECK_EQ(plan.length(), 4);
-  CHECK_EQ(space.strips().operators[plan.actions.front()].name, std::string("RemoveCap"));
-  CHECK_EQ(space.strips().operators[plan.actions.back()].name, std::string("PlaceCap"));
+  CHECK_EQ(space.strips().operators[plan.actions.front()].name, std::string("OpenDoor"));
+  CHECK_EQ(space.strips().operators[plan.actions.back()].name, std::string("CloseDoor"));
 }
 
-TEST(the_light_switch_problem_needs_two_actions) {
-  const StripsStateSpace space(lightSwitchProblem());
+TEST(the_ground_power_job_needs_somebody_to_walk_over_first) {
+  const StripsStateSpace space(groundPowerProblem());
   const Plan plan = localBfs(space);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(space, plan);
   CHECK_EQ(plan.length(), 2);
-  CHECK_EQ(space.strips().operators[plan.actions[0]].name, std::string("MoveToSwitch"));
-  CHECK_EQ(space.strips().operators[plan.actions[1]].name, std::string("FlipOn"));
+  CHECK_EQ(space.strips().operators[plan.actions[0]].name, std::string("WalkToPanel"));
+  CHECK_EQ(space.strips().operators[plan.actions[1]].name, std::string("ConnectGpu"));
 }

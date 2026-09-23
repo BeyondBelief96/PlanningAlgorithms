@@ -1,13 +1,16 @@
-// Reference solution -- Exercise 11: planning as satisfiability (Section 2.5.3).
+// Reference solution -- Exercise 11: planning without a planner.
 //
-// Every literal and every operator gets tagged with a stage, K is fixed in
-// advance, and the whole planning problem collapses into one enormous Boolean
-// expression.  Then a generic SAT solver does the planning.
+// Every fact and every job gets tagged with a step, K is fixed in advance, and
+// the whole turnaround collapses into one enormous Boolean formula.  Then a
+// solver that has never heard of an aeroplane does the planning.
 //
-// The cost of the trick is the fixed K: you do not know it before you solve the
-// problem, so the outer loop below guesses K = 0, 1, 2, ... and gives up at
-// maxK.  If the problem has no solution at all, that loop never terminates on
-// its own -- which is exactly the drawback the book points out.
+// The cost of the trick is that fixed K: you do not know it before you solve
+// the problem, so the outer loop below tries K = 0, 1, 2, ... and gives up at
+// maxK.  If the turnaround has no solution at all, that loop never terminates
+// on its own -- so this is a complete method for *finding* plans and only a
+// semi-decision procedure for proving there is none.
+//
+// [book] Section 2.5.3.
 #include <algorithm>
 #include <vector>
 

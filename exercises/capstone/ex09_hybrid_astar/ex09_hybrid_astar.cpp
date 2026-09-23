@@ -9,9 +9,9 @@ MergePath planHybridAStar(const ZoneLayer& cspace, const Pose& start,
                           const MergeCandidate& candidate,
                           const std::vector<ZoneClass>& allowedZones,
                           const HybridAStarParams& params) {
-  // TODO(you): Chapter 2 Exercise 03 again -- the same priority queue, the
-  // same stale-entry discard, the same admissible heuristic -- run over poses
-  // instead of integers.  Two things make it a *motion* planner:
+  // TODO(you): Part 1's Exercise 03 again -- the same priority queue, the same
+  // stale-entry discard, the same guess that never runs high -- run over poses
+  // instead of squares.  Two things make it a *motion* planner:
   //
   //   * the successors are motion primitives the aircraft can fly (straight,
   //     and one arc each way at params.radius, each params.primitiveLength

@@ -1,10 +1,16 @@
-// Reference solution -- Exercise 04: iterative deepening and IDA*.
+// Reference solution -- Exercise 04: without holding the frontier.
 //
-// Depth-first search is not systematic on an infinite X and gives no control
-// over plan length; breadth-first search is systematic but its queue is huge.
-// Iterative deepening keeps depth-first's memory profile and breadth-first's
-// guarantee, by throwing the previous iteration's work away.  The waste is
+// Depth first gives no control over how long the route is and can charge off
+// forever; breadth first is well-behaved but holds the whole frontier in
+// memory.  Iterative deepening keeps depth first's memory profile and breadth
+// first's guarantee by throwing the previous pass's work away.  The waste is
 // bounded: the last level usually dwarfs everything before it.
+//
+// On a grid of pavement this is the wrong trade -- every square is reachable
+// several ways.  On a state space of poses, where the frontier will not fit in
+// memory, it is the right one.
+//
+// [book] LaValle Section 2.2.2.
 #include <algorithm>
 #include <vector>
 

@@ -1,191 +1,215 @@
-# 9. Planning graphs — Sections 2.5.1–2.5.2
+# 9. How early could it finish?
 
-> Read alongside book pages 63–69, Figures 2.19 and 2.20.
 > Exercise: [10, the planning graph](../../exercises/ch02/ex10_planning_graph/README.md)
 
-## First, Section 2.5.1 in one paragraph
+## A cheaper question
 
-Before planning graphs, the book sketches **plan-space planning**: search in the
-space of *partial plans* rather than states. You start with an empty plan, find a
-flaw in it — an unachieved precondition, or an operator that threatens a causal
-link — and fix the flaw, repeating until none remain. It is elegant, it produces
-partially ordered plans directly, and it was largely superseded in the mid-1990s
-by the two methods that follow. There is no exercise for it here.
+Searching a turnaround description for a plan is expensive, and often the plan is
+not what anybody wants. What the ramp wants to know is *when*: can this aircraft
+be ready in twenty-five minutes, or should the gate be re-sequenced now rather
+than in twenty minutes' time?
 
-## The planning graph
+That is a cheaper question, and there is a structure that answers it without
+searching anything.
 
-Blum and Furst's idea (1997): build a structure that is *polynomial* in size and
-over-approximates which states are reachable, then search that instead of the state
-transition graph.
+The trick: assume every job that *could* run does run, all at once, round after
+round. That is wildly optimistic — half of those jobs contradict each other — so
+claw some of the optimism back by tracking which pairs of facts cannot honestly
+hold together at the same time. What comes out is not a plan. It is a floor: *not
+before the third round, whatever you do.*
 
-> The trade-off is that the planning graph indicates states that can possibly be
-> reached. The true reachable set is overapproximated, by eliminating many
-> impossible states from consideration.
+> The structure indicates the states that can **possibly** be reached. The true
+> reachable set is over-approximated, by eliminating many impossible states from
+> consideration.
 
-Over-approximation is the key word. A literal appearing in layer `i` means "some
-`i`-step plan *might* make this true", ignoring the interactions between the
-operators that would have to run together. Mutex pairs then claw back some of that
-optimism, cheaply.
+Over-approximation is the key word. A fact appearing in round `i` means "some
+`i`-step plan *might* make this true", ignoring the interactions between the jobs
+that would have to run together. The conflict pairs claw back some of that, and
+cheaply — the structure stays polynomial in size, which the state space never is.
 
 ## Structure
 
-A layered graph, alternating literals and operators:
+Layers, alternating facts and jobs:
 
 ```
-(L_1, O_1, L_2, O_2, L_3, O_3, ..., L_k, O_k, L_{k+1})
+(facts_1, jobs_1, facts_2, jobs_2, facts_3, ..., facts_k+1)
 ```
 
-- An edge from `l in L_i` to `o in O_i` when `l` is a precondition of `o`.
-- An edge from `o in O_{i-1}` to `l in L_i` when `l` is an effect of `o`.
+- An edge from a fact to a job when the fact is one of the job's preconditions.
+- An edge from a job to a fact when the fact is one of the job's effects.
 
-**No variables are allowed.** Every operator with variables must be expanded into
-one copy per substitution. `flashlightProblem()` already does this.
+**No variables allowed.** Every job written with a variable has to be expanded
+into one copy per substitution. `cargoHoldProblem()` already does this.
 
 ### Building it
 
-- **`L_1`** — the initial state. Every positive literal of `S`, plus the negation
-  of every positive literal not in `S`.
-- **`O_i`** — every operator whose preconditions are a subset of `L_i`, **plus** one
-  *trivial* operator per literal of `L_i`, whose sole precondition and sole effect
-  is that literal.
-- **`L_{i+1}`** — the union of the effects of everything in `O_i`.
+- **`facts_1`** — what is true when the aeroplane parks. Every positive fact
+  listed, plus the negation of every positive fact not listed.
+- **`jobs_i`** — every job whose preconditions are all present in `facts_i`,
+  **plus** one *do-nothing* job per fact, whose only precondition and only effect
+  is that fact.
+- **`facts_i+1`** — the union of everything the jobs in `jobs_i` make true.
 
-The trivial operators are the interesting part:
+The do-nothing jobs are the interesting part. They carry a fact forward
+untouched, so once something becomes true it stays available in every later
+round. Without them the structure never settles, and only plans of exactly the
+right length can be represented.
 
-> A trick similar to the termination action, `u_T`, is needed even here so that
-> plans of various lengths are properly handled.
+This is the *third* time in the unit that "allow doing nothing" turns a
+fixed-length method into a variable-length one. Guide 6 did it with the stop
+option. Guide 10 will do it again. The pattern is worth naming, because you will
+reach for it yourself the first time a planner insists on a plan of exactly the
+wrong length.
 
-They carry a literal forward unchanged, so once something becomes true it stays
-available in every later layer. Without them the graph never levels off, and only
-plans of exactly the right length are representable. Same idea as `u_T`, same
-purpose, a different disguise — this is the second time in one chapter that
-"allow doing nothing" turns a fixed-length method into a variable-length one, and
-it is worth noticing the pattern.
-
-In this repo a trivial operator is a `GraphOp` with `op < 0` and a nonzero
+In this repo a do-nothing job is a `GraphOp` with `op < 0` and a nonzero
 `maintain` field.
 
-### Levelling off
+### When to stop
 
-The book's criterion:
+The criterion: stop when a round produces the same facts and the same jobs as the
+round before it. Since the jobs are determined entirely by the facts, comparing
+the fact layers is enough. For the hold this happens at the fourth layer.
 
-> The iterations continue until the planning graph stabilizes, which means that
-> `O_{i+1} = O_i` and `L_{i+1} = L_i`.
+> **A caveat worth knowing.** Real GraphPlan waits longer. The conflict sets keep
+> shrinking after the fact sets stop growing — you can see it in
+> `turnaround_demo`, where layers 3 and 4 hold the same six facts but layer 3 has
+> five conflicting pairs and layer 4 has three. A goal pair that conflicts now may
+> stop conflicting later, so stopping at fact-settlement can in principle declare
+> failure too early. It does not bite on the hold, where the goal first becomes
+> conflict-free at layer 4 — the very last layer built. Exercise 10 follows the
+> simpler rule; the stricter test is "same facts *and* same conflicts", and
+> implementing it is a worthwhile extension.
 
-Since `O_i` is determined entirely by `L_i`, comparing the literal layers is
-enough. For the flashlight this stops at `L_4`, exactly where Figure 2.20 stops.
+## What conflicts with what
 
-> **A caveat the book does not spell out.** Real GraphPlan waits longer. The mutex
-> sets keep shrinking after the literal sets stop growing — you can see it in
-> `logic_demo`, where `L_3` and `L_4` hold the same six literals but `L_3` has five
-> mutex pairs and `L_4` has three. A goal pair that is mutex now may stop being
-> mutex later, so stopping at literal-stabilisation can in principle declare
-> failure too early. It does not bite on the flashlight, where the goal first
-> becomes non-mutex at `L_4` — the very last layer built. Exercise 10 follows the
-> book; the stricter test is "same literals *and* same mutexes", and implementing
-> it is a worthwhile extension.
+Computed round by round, because each round depends on the one before.
 
-## Mutex conditions
+**Two jobs conflict if any of:**
 
-Computed layer by layer, because each depends on the one before.
+1. **Opposite effects** — one makes a fact true and the other makes it false.
+2. **Interference** — one's effect is the negation of the other's precondition.
+   Check both directions. *Shutting the door interferes with loading, because
+   loading needs it open.*
+3. **Competing needs** — a precondition of one conflicts with a precondition of
+   the other, in the round they are both being read from.
 
-**Two operators `o, o' in O_i` are mutex if any of:**
+**Two facts conflict if either of:**
 
-1. **Inconsistent effects** — an effect of `o` is the negation of an effect of `o'`.
-2. **Interference** — an effect of `o` is the negation of a *precondition* of `o'`.
-   Check both directions.
-3. **Competing needs** — a precondition of `o` and a precondition of `o'` are mutex
-   in `L_i`.
+1. **They are opposites** — a fact and its own negation.
+2. **No consistent way to get both** — every pair of jobs in the previous round
+   achieving one and the other respectively is itself a conflicting pair. And the
+   escape clause that everyone misses:
 
-**Two literals `l, l' in L_i` are mutex if either of:**
+   > If there exists a single job that achieves both, then this condition is
+   > false, regardless of every other pair.
 
-1. **Negated literals** — they form a complementary pair.
-2. **Inconsistent support** — every pair of operators in `O_{i-1}` achieving `l`
-   and `l'` respectively is mutex. And the important escape clause:
+That escape clause changes the answer. In the ground power model, "the GPU is
+connected" and "the aeroplane is off its battery" are both effects of the single
+job `ConnectGpu`, so they never conflict — which is exactly why that goal is
+reachable two rounds in.
 
-   > If there exists an operator that achieves both, then this condition is false,
-   > regardless of the other pairs of operators.
+## The hold, round by round
 
-That escape clause is easy to miss and it changes the answer. In the light-switch
-problem, `On(Light)` and `!Dark(Room)` are both effects of the single operator
-`FlipOn`, so they are never mutex — which is exactly why that goal is reachable two
-layers in.
-
-## Example 2.8 — the flashlight, Figure 2.20
-
-`logic_demo` prints this, and `test_ex10` checks it:
+`turnaround_demo` prints this and `test_ex10` checks it:
 
 ```
-L1: !In(B2,F)  !In(B1,F)  On(C,F)
-O1: RemoveCap  + 3 trivial
-L2: !In(B2,F)  !In(B1,F)  !On(C,F)  On(C,F)
-      mutex: (!On(C,F), On(C,F))
-O2: PlaceCap  RemoveCap  Insert(B1)  Insert(B2)  + 4 trivial
-L3: all six literals
-      mutex: the three complementary pairs,
-             plus (On(C,F), In(B1,F)) and (On(C,F), In(B2,F))
-O3: all four operators  + 6 trivial
-L4: the same six literals
-      mutex: only the three complementary pairs
-levelled off at layer 4
+L1: !Loaded(ULD2)  !Loaded(ULD1)  Closed(Door)
+O1: OpenDoor  + 3 do-nothing
+L2: !Loaded(ULD2)  !Loaded(ULD1)  !Closed(Door)  Closed(Door)
+      conflict: (!Closed(Door), Closed(Door))
+O2: CloseDoor  OpenDoor  Load(ULD1)  Load(ULD2)  + 4 do-nothing
+L3: all six facts
+      conflicts: the three opposite pairs,
+                 plus (Closed(Door), Loaded(ULD1)) and (Closed(Door), Loaded(ULD2))
+O3: all four jobs  + 6 do-nothing
+L4: the same six facts
+      conflicts: only the three opposite pairs
+settled at layer 4
 ```
 
-Follow the story: `L_1` is the initial state, and only `RemoveCap` applies. Taking
-the cap off makes `!On(Cap, F)` available at `L_2`, which enables both inserts. By
-`L_3` every literal is present.
+Follow the story. Round 1: the aeroplane is shut and empty, and the only job that
+can run is opening the door. That makes "the door is open" available at round 2,
+which enables both loads. By round 3 every fact is present somewhere.
 
-But the goal is *not* reachable at `L_3`, because `On(Cap, F)` is mutex with
-`In(Battery1, F)` there. Work through why: at `L_3`, the only achievers of
-`On(Cap, F)` are `PlaceCap` and the trivial operator that keeps it on, and both
-interfere with `Insert(Battery1)`, which needs the cap off. Every achiever pair is
-mutex, so the literals are mutex.
+But the turnaround is **not** finished at round 3, because "the door is shut"
+conflicts with "ULD1 is aboard" there. Work through why: at round 3 the only ways
+to have the door shut are to shut it, or to have never opened it, and both of
+those interfere with loading, which needs it open. Every achiever pair conflicts,
+so the facts conflict.
 
-One layer later that resolves, because `keep[In(Battery1, F)]` has joined `O_3` and
-it does not conflict with `PlaceCap`. You can put the batteries in first and then
-put the cap on — which is, of course, the plan.
+One round later it resolves, because "keep ULD1 aboard" has joined the job layer
+and *that* does not conflict with shutting the door. Load first, then shut — which
+is, of course, the plan, and also what the ramp would have told you.
 
-## Layered plans
+## Rounds are not steps
 
-The planning graph does not yield a sequence. It yields a **layered plan**:
-
-```
-(A_1, A_2, ..., A_k)
-```
-
-where each `A_i` is a set of non-mutex operators that may run in any order without
-changing the result. The only constraint is that everything in `A_i` precedes
-everything in `A_{i+1}`. For the flashlight, equation (2.32):
+The structure does not yield a sequence. It yields a **layered plan**: a sequence
+of *sets* of jobs, where everything in one set may run in any order, or at the
+same time, and everything in set `i` precedes everything in set `i + 1`. For the
+hold:
 
 ```
-({RemoveCap}, {Insert(Battery1), Insert(Battery2)}, {PlaceCap})
+({OpenDoor}, {Load(ULD1), Load(ULD2)}, {CloseDoor})
 ```
 
-Linearising it gives back (2.24). Note that three layers produce a four-action
-plan — layers can hold several operators at once, and for large problems that gap
-is enormous. That is the whole point: the planning graph reasons about *far* longer
-plans than its layer count suggests.
+Three rounds, four jobs. Both containers go in together, because two loaders and
+one open door do not conflict.
 
-## Plan extraction, and what Exercise 10 does not ask for
+Flattening that gives back the four-job sequence, but notice that the flattening
+*throws information away*. "These two may run in parallel" is exactly what a
+turnaround plan is for. For a large problem the gap between rounds and jobs is
+enormous, and that is the whole point: the structure reasons about far longer
+plans than its round count suggests.
 
-Extraction is a backward AND/OR search from `L_i`. For each goal literal, the "or"
-branch picks an operator that produces it; the "and" branch must then achieve all
-of that operator's preconditions, recursively, down to `L_1`. Mutexes prune
-branches. In the worst case it is exponential — which is expected, since the
-problem is NP-hard.
+## What Exercise 10 does not ask for
 
-Exercise 10 stops short of extraction. You build the graph, the mutexes, and the
-cheap necessary test GraphPlan runs *before* attempting extraction:
+Pulling an actual plan out of the structure is a backward search: for each goal
+fact, pick a job that produces it, then recursively achieve all of *that* job's
+preconditions, down to round 1, with the conflict pairs pruning branches. In the
+worst case it is exponential — which is expected, since the problem is NP-hard.
+
+Exercise 10 stops short of that. You build the layers, the conflicts, and the
+cheap necessary test that GraphPlan runs *before* it bothers trying:
 
 ```cpp
 bool goalPossiblyReachable(const StripsProblem&, const PlanningGraph&, int layer);
 ```
 
-Every literal of `G` present in that layer, no two of them mutex. Necessary, not
-sufficient — the graph over-approximates. Implementing the AND/OR extraction on top
-is a good extension if you want one, and the book's completeness argument (the
-layers grow monotonically, the mutex sets shrink monotonically) tells you when to
-stop looking.
+Every goal fact present in that round, no two of them conflicting. Necessary, not
+sufficient — the structure over-approximates, so "possible" means "not ruled out
+yet".
+
+That is still the useful answer. "Not before 25 minutes" is a number the ramp can
+act on, arrived at in polynomial time, without ever deciding who does what.
 
 ---
 
-Next: [planning as satisfiability](10-sat.md).
+## In the book
+
+LaValle Sections 2.5.1 and 2.5.2, pages 63–69. Before planning graphs the book
+sketches **plan-space planning** — searching the space of partial plans, fixing
+flaws such as unachieved preconditions and threatened causal links. It is elegant
+and it was largely superseded in the mid-1990s by the two methods in guides 9 and
+10; there is no exercise for it here.
+
+The planning graph is Blum and Furst, 1997. The quoted over-approximation remark
+and the levelling-off criterion (`O_{i+1} = O_i` and `L_{i+1} = L_i`) are the
+book's, as is:
+
+> A trick similar to the termination action, `u_T`, is needed even here so that
+> plans of various lengths are properly handled.
+
+The layer naming is `(L_1, O_1, L_2, O_2, …, L_{k+1})`; conflicting pairs are
+*mutex* pairs, with the three operator conditions (inconsistent effects,
+interference, competing needs) and the two literal conditions (negated literals,
+inconsistent support) exactly as listed. The escape clause is quoted verbatim.
+
+The worked example is Example 2.8 and Figure 2.20, on the flashlight of Example
+2.6 — here the hold, relabelled as in [guide 8](08-logic-formulation.md). The
+layered plan is equation (2.32) and flattening it recovers (2.24). The
+ground-power mutex remark corresponds to book Exercise 15, the light switch's
+planning graph.
+
+---
+
+Next: [planning without a planner](10-sat.md).

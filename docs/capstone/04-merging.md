@@ -133,9 +133,10 @@ The same ladder, tuned differently:
 
 ## Step 8, last rung: hybrid A\*
 
-Exercise 09 is Chapter 2's Exercise 03 with poses instead of integers. The same
-priority queue, the same stale-entry discard, the same admissible heuristic. Two
-things make it a *motion* planner:
+Exercise 09 is [Part 1's Exercise 03](../../exercises/ch02/ex03_astar/README.md)
+with poses instead of squares. The same priority queue, the same stale-entry
+discard, the same guess that never runs high. Two things make it a *motion*
+planner:
 
 - The successors are motion primitives the aircraft can actually fly — straight,
   and one arc each way at a fixed radius — so every edge of the search tree is a

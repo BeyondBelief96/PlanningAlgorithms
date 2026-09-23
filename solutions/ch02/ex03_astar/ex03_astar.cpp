@@ -1,9 +1,12 @@
-// Reference solution -- Exercise 03: A* and best-first search.
+// Reference solution -- Exercise 03: the quickest route, faster.
 //
-// "The A* search algorithm works in exactly the same way as Dijkstra's
-// algorithm.  The only difference is the function used to sort Q."  So the
-// code below is Exercise 02 with one line changed -- and best-first is the
-// same code again with the C(x) term dropped from the sort key.
+// A* is Exercise 02 with one line changed: order Q by "spent so far + guess at
+// what is still to come" rather than "spent so far".  Best first is the same
+// code again with the spent-so-far term dropped entirely -- which is what costs
+// it optimality and what makes it fast.
+//
+// [book] "The A* search algorithm works in exactly the same way as Dijkstra's
+// algorithm.  The only difference is the function used to sort Q." 
 #include <queue>
 #include <vector>
 

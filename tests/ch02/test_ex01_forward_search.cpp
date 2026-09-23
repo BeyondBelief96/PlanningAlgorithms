@@ -5,48 +5,54 @@
 
 using namespace planning;
 
-TEST(bfs_finds_the_fewest_actions_on_figure_2_21) {
-  const GraphProblem problem = figure2_21();  // x_I = a, X_G = {e}
+TEST(breadth_first_takes_the_fewest_legs_not_the_quickest_route) {
+  const GraphProblem problem = bypassTaxi();  // stand 1 to the 36 holding point
   const Plan plan = breadthFirstSearch(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // a -> b -> c -> e is three actions.  The cheaper route a -> b -> c -> d -> e
-  // costs 10 rather than 13, but takes four; breadth first does not care.
+  // APRON, TWY A, then all the way round on A is three legs and thirteen
+  // minutes.  Cutting north through B is four legs and ten.  Breadth first
+  // counts legs, so it taxis the slow way and is perfectly happy about it.
   CHECK_EQ(plan.length(), 3);
   CHECK_NEAR(plan.cost, 13.0);
 }
 
-TEST(bfs_walks_around_the_wall_on_the_tiny_map) {
-  const GridProblem problem = GridProblem::fromAscii(maps::tiny());
+TEST(breadth_first_taxis_around_the_pier) {
+  const GridProblem problem = GridProblem::fromAscii(maps::standArea());
   const Plan plan = breadthFirstSearch(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // The Manhattan distance is 7, but the wall forces a detour to 9.
+  // Seven squares as the crow flies, nine once you go round the pier.
   CHECK_EQ(plan.length(), 9);
 }
 
-TEST(dfs_finds_a_valid_plan_even_if_a_silly_one) {
-  const GridProblem problem = GridProblem::fromAscii(maps::tiny());
+TEST(depth_first_finds_a_legal_route_even_if_an_absurd_one) {
+  const GridProblem problem = GridProblem::fromAscii(maps::standArea());
   const Plan plan = depthFirstSearch(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // No length claim: which plan depth first returns depends entirely on the
-  // order U(x) happens to be enumerated in.
+  // No length claim.  Which route depth first comes back with depends entirely
+  // on the order the four compass moves happen to be listed in -- it is a legal
+  // taxi route and nothing more.  Never hand this one to a flight crew.
   CHECK(plan.length() >= 9);
 }
 
-TEST(both_report_failure_when_no_plan_exists) {
-  GraphProblem problem = figure2_8();
-  problem.setInitialState(problem.stateByName("e"));  // e has no outgoing edges
+TEST(both_refuse_when_there_is_no_route_at_all) {
+  // An aeroplane that has entered the runway has no edge back to the holding
+  // position.  The honest answer is "no route", and both methods must give it
+  // rather than invent one.
+  GraphProblem problem = departureTaxi();
+  problem.setInitialState(problem.stateByName("RWY 27"));
   CHECK(!breadthFirstSearch(problem).found);
   CHECK(!depthFirstSearch(problem).found);
 }
 
 TEST(search_reports_how_much_work_it_did) {
-  const GridProblem problem = GridProblem::fromAscii(maps::openRoom());
+  // How hard a method had to look is the whole subject of Exercises 02-05.
+  const GridProblem problem = GridProblem::fromAscii(maps::openApron());
   const Plan plan = breadthFirstSearch(problem);
   CHECK(plan.found);
   CHECK(plan.expanded > 0);

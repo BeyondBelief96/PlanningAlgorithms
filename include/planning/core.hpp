@@ -1,14 +1,25 @@
-// core.hpp -- The state-space model of Chapter 2 (Formulations 2.1, 2.2, 2.3).
+// core.hpp -- The vocabulary every planner in this repo is written in.
+//
+// A planning problem, stripped to what an algorithm actually needs:
+//
+//   where the aeroplane is now              -> initialState()
+//   whether a place will do                 -> isGoal()
+//   what it can do from here, what each      -> successors(x)
+//     option costs and where it leads
+//   how it could have got here              -> predecessors(x)
+//
+// Note what is *not* here: the airport.  No map, no chart, no list of taxiways.
+// A planner is handed the moves available from wherever it happens to be
+// asking, and nothing else -- because in the capstone, and in every chapter of
+// the book after this one, the set of places an aeroplane could be is far too
+// large to write down.  Resist the urge to materialise the graph.
 //
 // This file is part of the *given* library: you do not edit it while working
-// the exercises.  It defines the vocabulary the whole chapter is written in.
+// the exercises.
 //
-//   X          the state space          -> states are ints in [0, numStates())
-//   U(x)       the action space at x    -> successors(x) lists one Transition per action
-//   f(x, u)    the state transition eq. -> Transition::x
-//   l(x, u)    the cost term            -> Transition::cost
-//   x_I        the initial state        -> initialState()
-//   X_G        the goal set             -> isGoal() / goalStates()
+// [book] LaValle Formulations 2.1, 2.2 and 2.3:
+//   X state space, U(x) actions, f(x, u) transition, l(x, u) cost,
+//   x_I initial state, X_G goal set.
 #pragma once
 
 #include <functional>
@@ -31,16 +42,16 @@ inline constexpr Action kTerminate = -2;
 
 inline constexpr double kInfinity = std::numeric_limits<double>::infinity();
 
-// One edge of the state transition graph.
+// One move: what you did, where it put you, and what it cost.
+// [book] one edge of the state transition graph.
 struct Transition {
   Action u = kNoAction;  // the action taken
   State x = kNoState;    // forward: f(x, u).  backward: the x with f(x, u) == this state.
   double cost = 1.0;     // l(x, u), always taken at the *originating* vertex
 };
 
-// A discrete planning problem.  The state transition graph is given only
-// implicitly, through successors()/predecessors() -- that implicitness is the
-// whole point of Chapter 2, so resist the urge to materialise the graph.
+// A discrete planning problem: somewhere to start, somewhere to get to, and a
+// way to ask what is available from a given place.
 class Problem {
  public:
   virtual ~Problem() = default;
@@ -75,24 +86,32 @@ struct Plan {
   std::vector<Action> actions;
   double cost = 0.0;
 
-  // Instrumentation, so you can compare algorithms (book Exercises 18-20).
-  long long expanded = 0;   // states removed from Q
-  long long generated = 0;  // states ever inserted into Q
+  // How hard the planner had to work for this.  Two planners that return the
+  // same route are not equally good; on a real surface graph the difference is
+  // milliseconds against seconds.  [book] Exercises 18-20.
+  long long expanded = 0;   // places actually examined
+  long long generated = 0;  // places ever queued to be examined
 
   int length() const { return static_cast<int>(actions.size()); }
   explicit operator bool() const { return found; }
 };
 
-// Heuristic cost-to-go estimate \hat{G}(x) used by A* and best-first search.
+// A guess at how much is still to go from x -- the thing that turns a blind
+// search into a directed one.  It must never guess high, or A* stops being
+// optimal.  [book] the heuristic Ghat(x).
 using Heuristic = std::function<double(State)>;
 
 // \hat{G}(x) == 0 for all x.  A* with this degenerates to Dijkstra's algorithm.
 Heuristic zeroHeuristic();
 
-// Walks the plan through f and checks that it really starts at x_I, really
-// ends in X_G, that every action is available where it is used, and that
-// Plan::cost is the sum of the l(x, u) terms.  Returns "" when the plan is
-// valid, otherwise a description of the first problem found.
+// Re-flies the route move by move and checks that it really starts where the
+// aeroplane is, really ends somewhere acceptable, that every move was actually
+// available where it was used, and that the quoted cost is the sum of the
+// moves.  Returns "" when the route holds up, otherwise the first thing wrong
+// with it.
+//
+// Every test in this repo runs this.  A route you cannot check is not a route
+// you can taxi.
 std::string validate(const Problem& problem, const Plan& plan);
 
 // --- Plan bookkeeping ------------------------------------------------------
@@ -117,7 +136,8 @@ Plan concatenate(const Problem& problem, const Plan& first, const Plan& second);
 
 std::string toString(const Problem& problem, const Plan& plan);
 
-// Pretty-prints a stage-indexed cost table the way Figures 2.9 / 2.12 / 2.14 do.
+// Prints a cost table: one row per sweep, one column per place.
+// [book] the layout of Figures 2.9, 2.12 and 2.14.
 std::string formatCostTable(const Problem& problem,
                             const std::vector<std::string>& rowLabels,
                             const std::vector<std::vector<double>>& rows);

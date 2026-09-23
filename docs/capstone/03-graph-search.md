@@ -3,14 +3,14 @@
 > Exercises: [05 the graph filter](../../exercises/capstone/ex05_graph_filter/README.md),
 > [06 cost-to-go](../../exercises/capstone/ex06_cost_to_go/README.md)
 
-This is Chapter 2 again, and it is worth noticing how little has changed. Same
+This is Part 1 again, and it is worth noticing how little has changed. Same
 priority queue, same stale-entry discard, same induction. Three things are
 different, and each one is there for a reason you can point at.
 
 ## The state is a directed edge, not a vertex
 
-In Chapter 2 the state was an integer and a transition was an action. Here the
-state is `(edge, direction)`.
+In Part 1 the state was a square of pavement or a node, and a move took you to
+another one. Here the state is `(edge, direction)`.
 
 The reason is the turn at the junction. An aeroplane arriving at a corner from
 the south and leaving to the east has to fly a fillet, and that fillet needs
@@ -92,8 +92,9 @@ of a spoken sentence.
 Run it backwards from the goal, over the filtered graph, and you get
 `cost_to_go(edge, direction, route index)` for every state — not just a route.
 
-Chapter 2 makes the point that backward value iteration produces a *feedback
-plan*: a function over the state space rather than a path through it. That is
+[Part 1's guide 6](../ch02/06-unspecified-length.md) makes the point that
+sweeping backwards produces a *policy*: a number for every place, rather than a
+path across them. That is
 exactly what Step 7 needs. Every merge candidate in Exercise 07 asks "if I join
 the graph *here*, what does the rest cost?", and the answer is a table lookup.
 Computing a fresh forward search per candidate would be a hundred searches per

@@ -71,51 +71,56 @@ Literal lit(int predicate, std::vector<int> args, bool positive = true) {
 
 }  // namespace
 
-StripsProblem flashlightProblem() {
+StripsProblem cargoHoldProblem() {
   StripsProblem p;
-  enum Inst { kBattery1, kBattery2, kCap, kFlashlight };
-  enum Pred { kOn, kIn };
-  p.instances = {"Battery1", "Battery2", "Cap", "Flashlight"};
-  p.predicates = {"On", "In"};
+  enum Inst { kUld1, kUld2, kDoor, kHold };
+  enum Pred { kClosed, kLoaded };
+  p.instances = {"ULD1", "ULD2", "Door", "Hold"};
+  p.predicates = {"Closed", "Loaded"};
 
-  const Literal onCap = lit(kOn, {kCap, kFlashlight});
-  const Literal in1 = lit(kIn, {kBattery1, kFlashlight});
-  const Literal in2 = lit(kIn, {kBattery2, kFlashlight});
-  p.atoms = {onCap, in1, in2};
+  const Literal doorShut = lit(kClosed, {kDoor, kHold});
+  const Literal loaded1 = lit(kLoaded, {kUld1, kHold});
+  const Literal loaded2 = lit(kLoaded, {kUld2, kHold});
+  p.atoms = {doorShut, loaded1, loaded2};
 
-  // Note that In(Battery1, Battery2) and friends are deliberately absent: the
-  // predicates of Formulation 2.4 are only *partial* functions of the instances.
+  // Note what is deliberately absent: Loaded(ULD1, ULD2), Closed(Hold, Door),
+  // Loaded(Door, Hold).  A predicate is only a *partial* function of the
+  // instances -- most combinations of a predicate and its arguments are simply
+  // not facts about anything, and listing them would be the first step towards
+  // the state space blow-up the whole representation exists to avoid.
   p.operators = {
-      {"PlaceCap", {onCap.negated()}, {onCap}},
-      {"RemoveCap", {onCap}, {onCap.negated()}},
-      {"Insert(Battery1)", {onCap.negated(), in1.negated()}, {in1}},
-      {"Insert(Battery2)", {onCap.negated(), in2.negated()}, {in2}},
+      {"CloseDoor", {doorShut.negated()}, {doorShut}},
+      {"OpenDoor", {doorShut}, {doorShut.negated()}},
+      {"Load(ULD1)", {doorShut.negated(), loaded1.negated()}, {loaded1}},
+      {"Load(ULD2)", {doorShut.negated(), loaded2.negated()}, {loaded2}},
   };
-  p.initial = {onCap};
-  p.goal = {onCap, in1, in2};
+  p.initial = {doorShut};
+  p.goal = {doorShut, loaded1, loaded2};
   return p;
 }
 
-StripsProblem lightSwitchProblem() {
+StripsProblem groundPowerProblem() {
   StripsProblem p;
-  enum Inst { kRobot, kSwitch, kLight, kRoom };
-  enum Pred { kAt, kOn, kDark };
-  p.instances = {"Robot", "Switch", "Light", "Room"};
-  p.predicates = {"At", "On", "Dark"};
+  enum Inst { kCrew, kPanel, kGpu, kAircraft };
+  enum Pred { kAt, kConnected, kOnBattery };
+  p.instances = {"Crew", "Panel", "Gpu", "Aircraft"};
+  p.predicates = {"At", "Connected", "OnBattery"};
 
-  const Literal atSwitch = lit(kAt, {kRobot, kSwitch});
-  const Literal onLight = lit(kOn, {kLight});
-  const Literal darkRoom = lit(kDark, {kRoom});
-  p.atoms = {atSwitch, onLight, darkRoom};
+  const Literal atPanel = lit(kAt, {kCrew, kPanel});
+  const Literal connected = lit(kConnected, {kGpu, kAircraft});
+  const Literal onBattery = lit(kOnBattery, {kAircraft});
+  p.atoms = {atPanel, connected, onBattery};
 
+  // Connecting and disconnecting both require somebody standing at the panel,
+  // which is what stops the plan being one job long.
   p.operators = {
-      {"MoveToSwitch", {atSwitch.negated()}, {atSwitch}},
-      {"MoveAway", {atSwitch}, {atSwitch.negated()}},
-      {"FlipOn", {atSwitch, onLight.negated()}, {onLight, darkRoom.negated()}},
-      {"FlipOff", {atSwitch, onLight}, {onLight.negated(), darkRoom}},
+      {"WalkToPanel", {atPanel.negated()}, {atPanel}},
+      {"WalkAway", {atPanel}, {atPanel.negated()}},
+      {"ConnectGpu", {atPanel, connected.negated()}, {connected, onBattery.negated()}},
+      {"DisconnectGpu", {atPanel, connected}, {connected.negated(), onBattery}},
   };
-  p.initial = {darkRoom};
-  p.goal = {onLight, darkRoom.negated()};
+  p.initial = {onBattery};
+  p.goal = {connected, onBattery.negated()};
   return p;
 }
 

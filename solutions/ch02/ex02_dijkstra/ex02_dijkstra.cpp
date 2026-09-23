@@ -1,14 +1,16 @@
-// Reference solution -- Exercise 02: Dijkstra's algorithm.
+// Reference solution -- Exercise 02: the quickest route.
 //
-// Same template as Exercise 01, but Q is sorted by the cost-to-come C(x), and
-// line 12 of Figure 2.4 finally has work to do: a state already in Q may be
-// reached again along a cheaper path, and must then be re-sorted.
+// Same template as Exercise 01, but Q is ordered by how cheap it was to reach
+// each place, and meeting a place twice finally has work to do: it may have
+// turned out to be reachable more cheaply, and then it has to be re-sorted.
 //
-// std::priority_queue cannot decrease a key, so we use the standard trick of
-// pushing a second entry and discarding stale pops.  The `dead` flag is the
-// book's third category of state, and it is what makes the discard safe: once
-// a state has been removed from Q its cost-to-come is final (see the induction
-// argument in Section 2.2.2).
+// std::priority_queue cannot lower a key, so we use the standard trick of
+// pushing a second entry and discarding stale ones as they surface.  The `dead`
+// flag is what makes the discard safe: once a place has come out of Q its cost
+// is final, so every later copy is by definition worse.  The argument is the
+// induction in docs/ch02/03-search-methods.md.
+//
+// [book] LaValle Section 2.2.2.
 #include <queue>
 #include <vector>
 

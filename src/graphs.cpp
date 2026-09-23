@@ -61,29 +61,29 @@ std::string GraphProblem::name(State x) const {
   return names_[x];
 }
 
-GraphProblem figure2_8() {
-  GraphProblem g({"a", "b", "c", "d", "e"}, 0, {3});
-  g.addEdge("a", "a", 2);
-  g.addEdge("a", "b", 2);
-  g.addEdge("b", "c", 1);
-  g.addEdge("b", "d", 4);
-  g.addEdge("c", "d", 1);
-  g.addEdge("c", "a", 1);
-  g.addEdge("d", "c", 1);
-  g.addEdge("d", "e", 1);
+GraphProblem departureTaxi() {
+  GraphProblem g({"STAND 2", "APRON", "TWY A", "HS 27 E", "RWY 27"}, 0, {3});
+  g.addEdge("STAND 2", "STAND 2", 2);
+  g.addEdge("STAND 2", "APRON", 2);
+  g.addEdge("APRON", "TWY A", 1);
+  g.addEdge("APRON", "HS 27 E", 4);
+  g.addEdge("TWY A", "HS 27 E", 1);
+  g.addEdge("TWY A", "STAND 2", 1);
+  g.addEdge("HS 27 E", "TWY A", 1);
+  g.addEdge("HS 27 E", "RWY 27", 1);
   return g;
 }
 
-GraphProblem figure2_21() {
-  GraphProblem g({"a", "b", "c", "d", "e"}, 0, {4});
-  g.addEdge("a", "b", 2);
-  g.addEdge("b", "a", 1);
-  g.addEdge("b", "c", 4);
-  g.addEdge("c", "d", 3);
-  g.addEdge("c", "e", 7);
-  g.addEdge("d", "c", 1);
-  g.addEdge("d", "d", 1);
-  g.addEdge("d", "e", 1);
+GraphProblem bypassTaxi() {
+  GraphProblem g({"STAND 1", "APRON", "TWY A", "TWY B", "HS 36 W"}, 0, {4});
+  g.addEdge("STAND 1", "APRON", 2);
+  g.addEdge("APRON", "STAND 1", 1);
+  g.addEdge("APRON", "TWY A", 4);
+  g.addEdge("TWY A", "TWY B", 3);
+  g.addEdge("TWY A", "HS 36 W", 7);
+  g.addEdge("TWY B", "TWY A", 1);
+  g.addEdge("TWY B", "TWY B", 1);
+  g.addEdge("TWY B", "HS 36 W", 1);
   return g;
 }
 

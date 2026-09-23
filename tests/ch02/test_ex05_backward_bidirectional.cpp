@@ -5,8 +5,8 @@
 
 using namespace planning;
 
-TEST(backward_dijkstra_finds_the_same_optimal_cost) {
-  const GraphProblem problem = figure2_21();
+TEST(planning_from_the_holding_point_backwards_costs_the_same) {
+  const GraphProblem problem = bypassTaxi();
   const Plan backward = backwardDijkstra(problem);
   const Plan forward = dijkstra(problem);
 
@@ -16,8 +16,8 @@ TEST(backward_dijkstra_finds_the_same_optimal_cost) {
   CHECK_NEAR(backward.cost, 10.0);
 }
 
-TEST(backward_dijkstra_on_the_grid) {
-  const GridProblem problem = GridProblem::fromAscii(maps::bugTrap());
+TEST(backward_dijkstra_on_the_surface) {
+  const GridProblem problem = GridProblem::fromAscii(maps::deadEndPier());
   const Plan backward = backwardDijkstra(problem);
   const Plan forward = dijkstra(problem);
 
@@ -26,14 +26,15 @@ TEST(backward_dijkstra_on_the_grid) {
   CHECK_NEAR(backward.cost, forward.cost);
 }
 
-TEST(backward_dijkstra_reports_failure_when_the_goal_is_unreachable) {
-  GraphProblem problem = figure2_8();
-  problem.setInitialState(problem.stateByName("e"));  // nothing leaves e
+TEST(backward_dijkstra_refuses_when_the_aircraft_cannot_get_there) {
+  // Searching backwards does not conjure an edge that is not on the chart.
+  GraphProblem problem = departureTaxi();
+  problem.setInitialState(problem.stateByName("RWY 27"));  // nothing leaves the runway
   CHECK(!backwardDijkstra(problem).found);
 }
 
-TEST(bidirectional_search_matches_breadth_first_on_plan_length) {
-  const GridProblem problem = GridProblem::fromAscii(maps::openRoom());
+TEST(bidirectional_search_matches_breadth_first_on_leg_count) {
+  const GridProblem problem = GridProblem::fromAscii(maps::openApron());
   const Plan both = bidirectionalSearch(problem);
   const Plan reference = breadthFirstSearch(problem);
 
@@ -42,10 +43,11 @@ TEST(bidirectional_search_matches_breadth_first_on_plan_length) {
   CHECK_EQ(both.length(), reference.length());
 }
 
-TEST(bidirectional_search_explores_less_than_one_wavefront_would) {
-  // Book Exercise 20.  Two small wavefronts beat one large one, because the
-  // number of states at radius r grows with r.
-  const GridProblem problem = GridProblem::fromAscii(maps::openRoom());
+TEST(two_small_wavefronts_beat_one_large_one) {
+  // The number of apron squares r moves from anywhere grows with r, so two
+  // searches meeting in the middle touch far less pavement than one search
+  // crossing the whole apron.  [book] Exercise 20.
+  const GridProblem problem = GridProblem::fromAscii(maps::openApron());
   const Plan both = bidirectionalSearch(problem);
   const Plan reference = breadthFirstSearch(problem);
 
@@ -54,8 +56,8 @@ TEST(bidirectional_search_explores_less_than_one_wavefront_would) {
                 ", breadth first expanded " + std::to_string(reference.expanded));
 }
 
-TEST(bidirectional_search_on_a_directed_graph) {
-  const GraphProblem problem = figure2_21();
+TEST(bidirectional_search_on_a_one_way_taxi_graph) {
+  const GraphProblem problem = bypassTaxi();
   const Plan plan = bidirectionalSearch(problem);
 
   CHECK(plan.found);

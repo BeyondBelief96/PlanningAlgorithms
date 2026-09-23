@@ -1,196 +1,234 @@
-# 3. Particular search methods — Section 2.2.2
+# 3. Which one to look at next
 
-> Read alongside book pages 35–39.
 > Exercises: [02 Dijkstra](../../exercises/ch02/ex02_dijkstra/README.md),
-> [03 A* and best-first](../../exercises/ch02/ex03_astar/README.md),
+> [03 A\* and best first](../../exercises/ch02/ex03_astar/README.md),
 > [04 iterative deepening](../../exercises/ch02/ex04_iterative_deepening/README.md)
 
-Each method below is Figure 2.4 with a different sort key for `Q`. That is the
-only difference, and writing them that way — rather than as four separate
-programs — is most of what this section has to teach.
+Each method below is guide 2's template with a different answer to "what comes
+out of the queue next". That is the only difference, and writing them that way —
+rather than as four separate programs — is most of what this guide has to teach.
 
-## Dijkstra's algorithm
+## Dijkstra: count the minutes
 
-Give every edge a nonnegative cost `l(x, u)`, and sort `Q` by the **cost-to-come**
-`C(x)`: the least total cost of any path from `x_I` to `x` found so far.
+Give every move a cost that is never negative, and take out whichever place is
+cheapest to have reached so far.
 
-- `C(x_I) = 0`.
-- Generating `x'` from `x` gives a candidate `C(x') = C(x) + l(x, u)`.
-- Line 12 finally has work to do. If `x'` is already in `Q` at a higher cost, lower
-  it and re-sort.
+- Where the aeroplane is now costs 0 to have reached.
+- Reaching `x'` from `x` costs whatever `x` cost, plus the move.
+- Line 12 finally has work to do. If `x'` is already in the queue at a higher
+  cost, lower it.
 
-### When does `C` become `C*`?
+This is the first method here that would survive contact with a flight crew.
+Breadth first minimises the number of legs, which is not a quantity anybody cares
+about; `bypassTaxi` is built to make the difference visible. Three legs round
+taxiway A is thirteen minutes. Four legs cutting north through B is ten. Breadth
+first takes the thirteen and reports success.
+
+### When is the cost final?
 
 This is the part worth understanding rather than memorising, because the same
-argument reappears in Section 2.3.3 and again in every later chapter that uses
-dynamic programming.
+argument reappears in guide 7 and again in every later chapter that does dynamic
+programming.
 
-> Once `x` is removed from `Q` using `Q.GetFirst()`, the state becomes dead, and
-> it is known that `x` cannot be reached with a lower cost.
+> Once a place is taken out of the queue it is dead, and it is known that it
+> cannot be reached more cheaply.
 
-By induction. `C(x_I) = 0` is optimal, giving the base case. Suppose every dead
-state has its optimal cost-to-come. Let `x` be the first element of `Q`. Any
-cheaper path to `x` would have to pass through some other state still in `Q` — but
-every such state already has a *higher* cost, and costs are nonnegative, so that
-path cannot be cheaper. All paths through dead states only were already accounted
-for when `C(x)` was computed. So `C(x) = C*(x)`, and `x` can join the dead.
+By induction. The starting place costs 0, which is optimal, giving the base case.
+Suppose every dead place has its true cheapest cost. Let `x` be the cheapest thing
+in the queue. Any cheaper route to `x` would have to pass through something else
+still in the queue — but everything still in the queue already costs *more*, and
+no move costs less than nothing, so that route cannot be cheaper. Routes that
+pass only through dead places were already counted. So `x`'s cost is final, and
+it can join the dead.
 
-Two things this argument depends on, both of which are worth noticing because they
-are exactly what breaks in other settings:
+Two things that argument leans on, both worth noticing because they are exactly
+what breaks elsewhere:
 
-- **Nonnegative costs.** With a negative edge, a state still in `Q` at a higher
-  cost could yet lead somewhere cheaper. Section 2.3.2 handles negative costs, but
-  only via value iteration, and only in the absence of negative cycles.
-- **Testing the goal on pop, not on generation.** The proof establishes optimality
-  at the moment of popping. Return earlier and you return a `C`, not a `C*`.
+- **No move costs less than nothing.** With a negative move, something still in
+  the queue at a higher cost could yet lead somewhere cheaper. Guide 6 handles
+  negative costs, but only through value iteration, and only when no *cycle* is
+  negative.
+- **You check for arrival on removal, not on generation.** The proof establishes
+  finality at the moment of removal. Return earlier and you return a
+  best-so-far, not a best.
 
-### Implementation: there is no decrease-key
+### There is no lowering a key
 
-`std::priority_queue` cannot lower the key of an element already inside it. The
-standard workaround is to push a *second* entry at the new lower cost and discard
-stale entries when they surface:
+`std::priority_queue` cannot reach inside and lower the cost of something already
+in it. The standard workaround is to push a *second* entry at the new lower cost
+and throw away stale ones as they surface:
 
 ```cpp
 const auto [c, x] = q.top();
 q.pop();
-if (dead[x]) continue;   // a stale duplicate; the real one was popped already
+if (dead[x]) continue;   // a stale duplicate; the real one came out already
 dead[x] = true;
 ```
 
-This is safe precisely because of the induction above: the first time a state is
-popped, its cost is optimal, so every later copy is by definition stale.
+This is safe precisely because of the induction above: the first time a place
+comes out, its cost is final, so every later copy is by definition stale.
 
-Running time is `O(|V| log |V| + |E|)` with a Fibonacci heap; a binary heap with
-lazy deletion gives `O(|E| log |V|)`, which is what you get here and is fine.
+## A\*: count the minutes, and guess the rest
 
-## A*
-
-A* is Dijkstra with one line changed. Sort `Q` by
+A\* is Dijkstra with one line changed. Take out whichever place minimises
 
 ```
-C(x) + Ĝ(x)
+minutes spent getting here  +  guess at the minutes still to go
 ```
 
-where `Ĝ(x)` estimates the remaining cost-to-go from `x` to `X_G`.
+> If the guess never exceeds the truth, A\* is guaranteed to find the best route.
 
-> If `Ĝ(x)` is an underestimate of the true optimal cost-to-go for all `x in X`,
-> the A* algorithm is guaranteed to find optimal plans.
+A guess that never runs high is called *admissible*. On a grid of pavement where
+every move costs 1 and you can only move on the square, `|Δrow| + |Δcol|` is
+admissible: it is the route you would taxi if the buildings were not there, and
+buildings only ever make things longer.
 
-An estimate that never exceeds the truth is called *admissible*. On a 4-connected
-unit-cost grid, `|i - i'| + |j - j'|` is admissible: it is the length of the plan
-you would follow if the obstacles were not there, and obstacles can only make
-things worse.
+The two extremes are worth holding onto:
 
-Note the two extremes:
+- **guess ≡ 0** — A\* is exactly Dijkstra. The `standArea` demo shows this
+  literally: `A* (zero)` and `Dijkstra` expand the same 32 squares.
+- **guess ≡ the truth** — A\* walks straight down the best route and looks at
+  nothing else.
 
-- `Ĝ = 0` — A* degenerates exactly to Dijkstra.
-- `Ĝ = G*` — A* walks straight down the optimal path, expanding nothing else.
+Everything useful is in between, and the closer the guess gets, the less airport
+gets examined. The catch, which becomes a running theme once the state space is
+poses rather than squares, is that a better guess is usually a more expensive
+guess, and at some point it costs more than the search it saves.
 
-Everything useful lives between them, and the closer `Ĝ` gets to `G*`, the fewer
-states get expanded. The catch, which the book flags and which becomes a running
-theme in Part II, is that a better heuristic is usually a more expensive one, and
-at some point the estimate costs more than the search it saves.
+### Square-corner distance versus straight-line distance
 
-### Book Exercise 18: Manhattan versus Euclidean
+Both never run high on a 4-connected grid, so both give the best route. But the
+straight line is a *weaker* guess: `sqrt(Δr² + Δc²) ≤ |Δr| + |Δc|`, with equality
+only when the goal is on the same row or column. A weaker guess means less
+guidance means more of the apron examined.
 
-Both are admissible on a 4-connected grid, so both give optimal plans. But
-Euclidean is a *weaker* estimate: `sqrt(dr² + dc²) ≤ |dr| + |dc|`, with equality
-only when the goal is on the same row or column. A weaker underestimate means less
-guidance means more expansions. Run the demo and watch:
-
-```
-./build/vs/Debug/grid_demo.exe openroom
-```
-
-On `openRoom` (240 states) the reference reports:
-
-```
-  Dijkstra                 cost 23   expanded 226
-  A* (Euclidean)           cost 23   expanded 169
-  A* (Manhattan)           cost 23   expanded 129
-  best first (Manhattan)   cost 23   expanded  24
+```powershell
+./build/vs/Debug/surface_demo.exe open
 ```
 
-All three A* variants return the same optimal cost, and Manhattan beats Euclidean
-because it is *exact* in an obstacle-free region, while Euclidean systematically
-undershoots — a grid robot cannot travel diagonally, so the straight-line distance
-is never achievable. That ordering is the exercise's answer.
+On `openApron` — 240 squares of pavement — the reference produces:
 
-The exercise also asks why A* degrades when many plans are optimal or nearly so,
-and `openRoom` shows it plainly: 129 of 240 states expanded even with an exact
-heuristic. With `Ĝ` exact, every cell on every monotone staircase from start to
-goal has the same `f = C + Ĝ = 23`, so A* has no basis for preferring any of them
-and works through the lot. Best first, which ignores `C` entirely, expands 24 —
-and on this map it happens to get the optimal answer anyway.
+```
+  Dijkstra                 23.000 minutes   expanded 226
+  A* (Euclidean)           23.000 minutes   expanded 169
+  A* (Manhattan)           23.000 minutes   expanded 129
+  best first               23.000 minutes   expanded  24
+```
 
-## Best-first search
+All three A\* variants return the same 23 minutes. Square-corner distance beats
+straight-line distance because it is *exact* on clear pavement, while the
+straight line systematically undershoots — a taxiing aeroplane cannot travel
+diagonally across an apron, so the straight-line distance is never achievable.
 
-Sort `Q` by `Ĝ(x)` alone. Drop the cost-to-come entirely.
+Then notice the number that should bother you. A\* still examines 129 of 240
+squares with an exact guess. With the guess exact, every square on every
+staircase between the stand and the holding point scores the same 23, and A\* has
+no reason to prefer any of them, so it works through the lot. Best first, which
+throws the cost-so-far away entirely, examines 24 — and on this apron happens to
+get the right answer anyway.
 
-Because `C(x)` is gone, there is no optimality claim, and no reason for `Ĝ` to be
-an underestimate. What you get instead is speed: best-first often expands far fewer
-states than A*.
+That plateau is the honest limitation of heuristic search on open pavement, and
+it is why the capstone's cost function has a hotspot penalty and a turn penalty
+in it: not because those things dominate taxi time, but because they break ties,
+and a search with no ties to break goes very much faster.
 
-> Sometimes the price must be paid for being greedy!
+## Best first: forget where you came from
 
-Figure 2.5 shows the pathology: a spiral tube whose opening faces away from the
-goal. Best-first follows the tube all the way around rather than leaving it and
-heading straight for the goal, and you can make the waste arbitrarily large by
-lengthening the spiral. Best-first is also **not systematic**, so on an infinite
-`X` it can miss a solution entirely.
+Take out whichever place has the smallest guess. Drop the cost-so-far entirely.
 
-The `bugTrap` map is the 2D shadow of this: a pocket whose only opening faces away
-from the goal, so best-first must exhaust the pocket before it will take a single
-step that increases `Ĝ`.
+Because the cost-so-far is gone, there is no claim that the route is any good,
+and no reason for the guess to be an underestimate. What you get instead is
+speed — often far less of the airport examined.
 
-> **Book Exercise 2 is left open on purpose.** `bugTrap` makes best-first *work*
-> harder, but it still returns an optimal plan, because once it escapes there is
-> only one route left. Building a 2D map where best-first comes back with a plan
-> that is genuinely worse is the exercise. Hint: you need two routes to the goal —
-> a long one whose first step decreases `Ĝ`, and a short one whose first step
-> increases it. Add a map to `planning::maps` in `src/grid.cpp` and check it with
-> `grid_demo`.
+> Sometimes the price must be paid for being greedy.
 
-## Iterative deepening
+`deadEndPier` is the demonstration. A row of stands walled in on three sides,
+opening west, holding point to the south-east. Best first taxis east because east
+is towards the goal, wedges the aeroplane against the inside of the pier, and has
+to exhaust the entire pocket before it will accept a single move that increases
+the distance. It is the surface equivalent of taxiing into a cul-de-sac between
+two piers and needing a tow to get out.
 
-Run depth-first search with a depth limit of 0, then 1, then 2, and so on, throwing
-away all the previous work each time.
+Best first is also **not systematic**, which is the part that should disqualify it
+from anything safety-relevant: on an infinite state space it can miss a route
+that exists, and it cannot tell you the difference between "no route" and "I gave
+up".
 
-This sounds wasteful and mostly is not. If the branching factor is `b`, level
-`i + 1` holds roughly `b` times as many states as level `i`, so the cost of all
-earlier iterations is a constant fraction of the last one. What you buy is
-breadth-first's guarantee (fewest actions, systematic) with depth-first's memory
-profile (the stack is the depth, not the frontier).
+> **An open exercise.** `deadEndPier` makes best first *work* harder, but it still
+> returns the best route, because once it escapes the pier there is only one way
+> round. Building a surface where best first comes back with a route that is
+> genuinely longer is the exercise. You need two routes to the holding point: a
+> long one whose first move decreases the guess, and a short one whose first move
+> increases it. Add it to `planning::maps` in `src/grid.cpp` and check it with
+> `surface_demo`.
 
-> Iterative deepening can be viewed as a way of converting depth-first search into
-> a systematic search method.
+## Iterative deepening: search shallow, then deeper
 
-**When it is a good idea:** a large branching factor and few revisited states — the
-Rubik's cube, or a STRIPS problem with many operators.
+Run depth first with a limit of 0 moves, then 1, then 2, throwing away all the
+previous work each time.
 
-**When it is not:** a grid. States are revisited constantly, and iterative
-deepening deliberately keeps no global visited set (a state too deep on one branch
-may be shallow enough on another), so the running time is exponential in the plan
-length. `grid_demo` refuses to run it when the plan is longer than 12 actions, for
-exactly this reason. That refusal is itself worth reading as a result.
+This sounds wasteful and mostly is not. If each place has `b` options, the level
+`i + 1` holds roughly `b` times as many places as level `i`, so all the earlier
+passes together cost a constant fraction of the last one. What you buy is breadth
+first's guarantee — fewest moves, systematic — with depth first's memory profile:
+you hold one branch, not the whole frontier.
 
-**IDA*** replaces the depth cutoff with a cutoff on `C(x) + Ĝ(x)`. The subtlety is
-choosing the next bound: increase it by a fixed step and you either re-explore the
-same tree or skip past the optimum. The right answer is to have each iteration
-report the smallest `f` value it *rejected*, and use exactly that next.
+**When it is a good idea:** many options per place and few places reachable two
+ways. A turnaround description with many jobs. A state space of poses, where the
+frontier will not fit in memory.
+
+**When it is not:** a grid of pavement. Every square is reachable several ways,
+and iterative deepening deliberately keeps no record of where it has been — a
+square too deep on one branch may be shallow enough on another — so the running
+time is exponential in the number of moves. `surface_demo` refuses to run it when
+the route is longer than 12 moves, and that refusal is itself the result:
+
+```
+iterative deepening     skipped: the shortest route is 23 moves, and depth-limited
+                        search with no visited set is exponential in that
+```
+
+**IDA\*** replaces the move limit with a limit on minutes-plus-guess. The subtlety
+is choosing the next ceiling: raise it by a fixed step and you either re-explore
+the same ground or step straight over the answer. The right answer is to have each
+pass report the smallest value it *rejected*, and use exactly that next.
 
 ## Summary
 
-| Method | Sort key for `Q` | Optimal? | Systematic? |
+| Method | What comes out next | Best route? | Can it honestly say "no route"? |
 |---|---|---|---|
-| breadth first | FIFO | fewest actions only | yes |
-| depth first | LIFO | no | finite `X` only |
-| Dijkstra | `C(x)` | yes | yes |
-| A* | `C(x) + Ĝ(x)` | yes, if `Ĝ ≤ G*` | yes |
-| best first | `Ĝ(x)` | no | no |
-| iterative deepening | depth limit | fewest actions only | yes |
-| IDA* | `C(x) + Ĝ(x)` limit | yes, if `Ĝ ≤ G*` | yes |
+| breadth first | the oldest | fewest moves only | yes |
+| depth first | the newest | no | only when the space is finite |
+| Dijkstra | cheapest so far | yes | yes |
+| A\* | cheapest so far + guess | yes, if the guess never runs high | yes |
+| best first | guess alone | no | **no** |
+| iterative deepening | depth-limited | fewest moves only | yes |
+| IDA\* | cost-limited | yes, if the guess never runs high | yes |
+
+The last column is the one the capstone cares about.
 
 ---
 
-Next: [backward and bidirectional search](04-backward-bidirectional.md).
+## In the book
+
+LaValle Section 2.2.2, pages 35–39. Dijkstra's cost-to-come is `C(x)` and the
+optimality argument is the book's; A\* sorts by `C(x) + Ĝ(x)` and the quoted
+guarantee is from that section, as is "sometimes the price must be paid for being
+greedy!"
+
+Square-corner distance is the book's Manhattan heuristic and straight-line is
+Euclidean; comparing them is book Exercise 18, and the `openApron` numbers above
+are its measurable content — 18(a) is why Manhattan wins, and the second half of
+18 is the plateau of equal-`f` states, which motivates book Exercise 21.
+
+`deadEndPier` is the 2D shadow of Figure 2.5, the spiral tube whose opening faces
+away from the goal. The open exercise above is book Exercise 2.
+
+Iterative deepening and the quoted "way of converting depth-first search into a
+systematic search method" are from the same section; running times are
+`O(|V| log |V| + |E|)` with a Fibonacci heap and `O(|E| log |V|)` with the binary
+heap and lazy deletion used here.
+
+---
+
+Next: [planning from the other end](04-backward-bidirectional.md).

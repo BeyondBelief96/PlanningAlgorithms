@@ -211,4 +211,9 @@ inline int run() {
       ::testing::fail(__FILE__, __LINE__, "invalid plan: " + testing_why_);            \
   } while (0)
 
+// The same, for the taxi problems of Part 1.
+#define CHECK_VALID_ROUTE(theChart, theRoute)                                               do {                                                                                        const std::string testing_why_ = ::planning::chart::validate((theChart), (theRoute));     if (!testing_why_.empty())                                                                  ::testing::fail(__FILE__, __LINE__, "invalid route: " + testing_why_);                } while (0)
+
+#define CHECK_VALID_JOBS(theTurnaround, thePlan, theCrew)                                   do {                                                                                        const std::string testing_why_ =                                                              ::planning::chart::validate((theTurnaround), (thePlan), (theCrew));                   if (!testing_why_.empty())                                                                  ::testing::fail(__FILE__, __LINE__, "invalid job plan: " + testing_why_);             } while (0)
+
 int main() { return ::testing::run(); }

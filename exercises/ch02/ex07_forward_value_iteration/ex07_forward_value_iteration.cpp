@@ -1,4 +1,6 @@
-// Exercise 07 -- Forward value iteration, fixed plan length (Section 2.3.1.2).
+// Exercise 07 -- The cost already spent, on the same budget.
+//
+// [book] LaValle Section 2.3.1.2.
 //
 // Read exercises/ch02/ex07_forward_value_iteration/README.md first.
 #include <algorithm>
@@ -9,22 +11,27 @@
 namespace planning {
 
 CostTable forwardValueIteration(const Problem& problem, int K) {
-  // TODO(you): implement equation (2.16),
+  // TODO(you): the mirror image of Exercise 06.
   //
-  //     C*_{k+1}(x_{k+1}) = min over (x_k, u) with f(x_k, u) = x_{k+1}
-  //                             of [ C*_k(x_k) + l(x_k, u) ]
+  //     alreadySpent(place, after k+1 moves) = min over moves arriving here of
+  //                                              [ alreadySpent(where it came
+  //                                                  from, after k)
+  //                                                + cost of the move ]
   //
-  // starting from C*_1(x) = 0 at x_I and infinity elsewhere.
+  // starting from 0 where the aeroplane is and infinity everywhere else.
   //
-  // Return K + 1 rows: row 0 is C*_1, row k is C*_{k+1}, matching Figure 2.12.
+  // Return K + 1 rows: row 0 is zero moves made, row k is exactly k moves made.
   //
-  // Two things to notice while you write it, because they are the real lesson
-  // of this section:
-  //   - Nothing here mentions X_G.  The goal only enters when you add l_F at
-  //     the end.  The backward version, by contrast, cannot even start without
-  //     knowing X_G.
-  //   - You need f^{-1}, not f.  problem.predecessors(x) gives it to you here,
-  //     but in a real problem f^{-1} may be far harder to compute than f.
+  // Two things to notice while you write it, because they are the real lesson:
+  //   - Nothing here mentions where the aeroplane is *going*.  What it cost to
+  //     get somewhere depends on the airport and where you started, not on the
+  //     clearance.  The backward version cannot even start without knowing
+  //     where the route is supposed to end.
+  //   - You need to know how places are *reached*, not where they lead.
+  //     problem.predecessors(x) hands it over here, but on a surface graph
+  //     where the state carries a heading that is the harder direction.
+  //
+  // [book] equation (2.16), from C*_1(x_I) = 0; the table is Figure 2.12.
   (void)problem;
   (void)K;
   return {};

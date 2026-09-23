@@ -1,8 +1,13 @@
-// Reference solution -- Exercise 05: backward and bidirectional search.
+// Reference solution -- Exercise 05: from the other end.
 //
-// Figure 2.6 is Figure 2.4 with f replaced by f^{-1} and the roles of x_I and
-// X_G swapped.  Figure 2.7 runs both at once and stops when the two trees
-// touch.
+// Backward search is the same template with the moves reversed and the two
+// ends swapped: start at the holding point, work back towards the aeroplane.
+// Bidirectional runs both at once and stops when they touch.
+//
+// What backward search computes is worth more than the route it returns: a cost
+// to finish from *every* place, which is what the capstone replans against.
+//
+// [book] LaValle Figures 2.6 and 2.7.
 #include <algorithm>
 #include <queue>
 #include <vector>

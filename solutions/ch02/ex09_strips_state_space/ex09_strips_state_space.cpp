@@ -1,13 +1,16 @@
-// Reference solution -- Exercise 09: STRIPS to state space (Section 2.4.2).
+// Reference solution -- Exercise 09: a description you can search.
 //
-// A state is one choice of positive-or-negative from every complementary pair,
-// which is exactly a bit string over `atoms`.  Reading that bit string as an
-// integer gives |X| = 2^|atoms| and drops the whole of Section 2.2 onto the
-// logic-based representation unchanged.
+// A state of the turnaround is one yes-or-no answer for every fact, which is
+// exactly a bit string over `atoms`.  Reading it as an integer drops every
+// search method from Exercises 01 to 08 onto a turnaround description
+// unchanged -- the payoff for having written them against an interface rather
+// than against a map.
 //
-// It also shows why logic-based planning is hard: three atoms is eight states,
-// but thirty atoms is a billion.  The input is tiny and the graph is enormous,
-// which is the whole point of Section 2.4's remark about Kolmogorov complexity.
+// It also shows why this kind of planning is hard: three facts is eight states,
+// ten facts about a real turnaround is a thousand, thirty is a billion.  The
+// description is tiny and the graph it names is enormous.
+//
+// [book] Section 2.4.2; the Kolmogorov complexity remark is Section 2.4.3.
 #include <vector>
 
 #include "planning/strips.hpp"

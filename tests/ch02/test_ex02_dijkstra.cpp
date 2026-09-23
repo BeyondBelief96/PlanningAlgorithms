@@ -5,31 +5,34 @@
 
 using namespace planning;
 
-TEST(dijkstra_prefers_the_cheap_four_step_route_on_figure_2_21) {
-  const GraphProblem problem = figure2_21();
+TEST(dijkstra_takes_the_bypass_because_it_counts_minutes) {
+  const GraphProblem problem = bypassTaxi();
   const Plan plan = dijkstra(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // a -> b -> c -> d -> e costs 2 + 4 + 3 + 1 = 10, beating the three-action
-  // route a -> b -> c -> e at 2 + 4 + 7 = 13.
+  // STAND 1, APRON, TWY A, TWY B, HS 36 W: 2 + 4 + 3 + 1 = 10 minutes.  One leg
+  // longer than staying on A, and three minutes quicker.  This is the first
+  // moment in the chapter where the cost function decides anything.
   CHECK_NEAR(plan.cost, 10.0);
   CHECK_EQ(plan.length(), 4);
 }
 
-TEST(dijkstra_matches_the_optimal_cost_to_go_of_figure_2_14) {
-  const GraphProblem problem = figure2_8();  // x_I = a, X_G = {d}
+TEST(dijkstra_taxis_out_in_four_minutes) {
+  const GraphProblem problem = departureTaxi();  // stand 2 to HS 27 E
   const Plan plan = dijkstra(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // Figure 2.14 gives G*(a) = 4, by a -> b -> c -> d.
+  // APRON, TWY A, HS 27 E: 2 + 1 + 1.  Straight out on the apron lanes is one
+  // leg shorter and twice as slow.
+  // [book] Figure 2.14 gives G*(a) = 4 for exactly this.
   CHECK_NEAR(plan.cost, 4.0);
   CHECK_EQ(plan.length(), 3);
 }
 
-TEST(dijkstra_is_optimal_on_the_grid) {
-  const GridProblem problem = GridProblem::fromAscii(maps::tiny());
+TEST(dijkstra_is_optimal_on_the_surface_too) {
+  const GridProblem problem = GridProblem::fromAscii(maps::standArea());
   const Plan plan = dijkstra(problem);
 
   CHECK(plan.found);
@@ -37,20 +40,21 @@ TEST(dijkstra_is_optimal_on_the_grid) {
   CHECK_NEAR(plan.cost, 9.0);
 }
 
-TEST(dijkstra_handles_diagonal_steps) {
-  const GridProblem problem = GridProblem::fromAscii(maps::openRoom(), /*eightConnected=*/true);
+TEST(dijkstra_handles_diagonal_moves) {
+  const GridProblem problem = GridProblem::fromAscii(maps::openApron(), /*eightConnected=*/true);
   const Plan plan = dijkstra(problem);
   const Plan breadth = breadthFirstSearch(problem);
 
   CHECK(plan.found);
   CHECK_VALID_PLAN(problem, plan);
-  // Breadth first minimises the number of actions; with sqrt(2) diagonals that
-  // is no longer the same thing as minimising cost.
+  // Breadth first minimises the number of moves.  Once a diagonal costs
+  // sqrt(2) that stops being the same thing as minimising taxi time, and only
+  // one of the two methods notices.
   CHECK(plan.cost <= breadth.cost + 1e-9);
 }
 
-TEST(dijkstra_reports_failure_when_no_plan_exists) {
-  GraphProblem problem = figure2_8();
-  problem.setInitialState(problem.stateByName("e"));
+TEST(dijkstra_refuses_when_there_is_no_route) {
+  GraphProblem problem = departureTaxi();
+  problem.setInitialState(problem.stateByName("RWY 27"));  // nothing leaves the runway
   CHECK(!dijkstra(problem).found);
 }

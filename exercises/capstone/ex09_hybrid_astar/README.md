@@ -10,9 +10,9 @@ MergePath planHybridAStar(const ZoneLayer& cspace, const Pose& start,
                           const HybridAStarParams&);
 ```
 
-This is [Chapter 2's Exercise 03](../../ch02/ex03_astar/README.md) again — the same
-priority queue, the same stale-entry discard, the same admissible heuristic — run
-over poses instead of integers. Two things make it a *motion* planner:
+This is [Part 1's Exercise 03](../../ch02/ex03_astar/README.md) again — the same
+priority queue, the same stale-entry discard, the same guess that never runs high
+— run over poses instead of squares. Two things make it a *motion* planner:
 
 - the successors are motion primitives the aircraft can actually fly, so every
   edge of the search tree is a feasible piece of path;
@@ -34,7 +34,7 @@ closed set   a lattice: params.positionResolution metres, params.headingBins bin
 validity     every sample of a primitive is in allowedZones, on the C-space layer
 ```
 
-Poses are continuous, so the "dead" set of Chapter 2 becomes a lattice: keep the
+Poses are continuous, so Part 1's "dead" set becomes a lattice: keep the
 best cost seen per `(cell x, cell y, heading bin)`. Euclidean distance never
 overestimates the arclength that remains, so A\* stays optimal *on that lattice*.
 

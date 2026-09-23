@@ -1,4 +1,4 @@
-# Chapter 2 reference solutions
+# Reference solutions
 
 One file per exercise, mirroring `exercises/ch02/`. Every one compiles against the
 same headers and is checked by the same tests, so if you want to know whether the
@@ -8,8 +8,9 @@ reference actually works:
 ctest --test-dir build/vs -C Debug -L reference --output-on-failure
 ```
 
-All eleven pass, and between them they reproduce Figures 2.9, 2.12, 2.14, 2.15
-and 2.20 and equation (2.24) exactly as printed in the book.
+All eleven pass, and between them they reproduce every number printed in the
+guides — the cost tables in guides 5 and 6, the round-by-round structure in guide
+9, the satisfiability ladder in guide 10.
 
 ## How to use these
 
@@ -17,13 +18,14 @@ and 2.20 and equation (2.24) exactly as printed in the book.
 is almost entirely in the hour before you get it working.
 
 When you do read them, the comments carry the reasoning rather than a narration of
-the code — why line 12 of Figure 2.4 is a no-op for breadth-first and not for
-Dijkstra, why the stale-entry trick is safe, why the forward and backward
-termination actions look different. Those are the parts worth arguing with.
+the code — why meeting a place twice is a no-op for breadth first and not for
+Dijkstra, why the stale-entry trick is safe, why stopping means two different
+things depending on which direction you are sweeping. Those are the parts worth
+arguing with.
 
 If your version differs and both pass the tests, yours is not wrong. There are
 several reasonable ways to write most of these, and the tests only pin down the
-things the book pins down.
+things that are genuinely pinned down.
 
 ## Where the interesting decisions are
 
@@ -31,24 +33,28 @@ things the book pins down.
 |---|---|
 | `ex01_forward_search` | the whole family factored into one function |
 | `ex02_dijkstra` | the decrease-key workaround, and why `dead` makes it safe |
-| `ex03_astar` | A* and best-first as one function with a weight on `C(x)` |
-| `ex04_iterative_deepening` | choosing the next IDA* bound from the rejected `f` |
-| `ex05_backward_bidirectional` | wavefront-at-a-time, and why it beats Figure 2.7 |
-| `ex06_backward_value_iteration` | the stage-index arithmetic, written out |
+| `ex03_astar` | A\* and best first as one function with a weight on the cost-so-far |
+| `ex04_iterative_deepening` | choosing the next IDA\* ceiling from the rejected value |
+| `ex05_backward_bidirectional` | wavefront-at-a-time, and why it beats the textbook version |
+| `ex06_backward_value_iteration` | the row-index arithmetic, written out |
 | `ex07_forward_value_iteration` | how little changes, and which two things do |
-| `ex08_stationary_value_iteration` | `u_T` as one extra term; tie-breaking to terminate |
+| `ex08_stationary_value_iteration` | the stop option as one extra term; breaking ties towards it |
 | `ex09_strips_state_space` | bit masks, and an honest note on what will not scale |
-| `ex10_planning_graph` | the mutex conditions, and the escape clause in condition 2 |
+| `ex10_planning_graph` | the conflict conditions, and the escape clause in the second one |
 | `ex11_planning_as_sat` | the five clause families, and a compact DPLL |
 
 ## Deliberate limitations
 
-These are teaching implementations. Three places where a production version would
-differ, all of them flagged in comments:
+These are teaching implementations. Three places where something you would fly
+would differ, all flagged in comments:
 
 - **`ex02`** uses a binary heap with lazy deletion, giving `O(|E| log |V|)`. The
-  book quotes `O(|V| log |V| + |E|)`, which needs a Fibonacci heap.
-- **`ex09`** computes `predecessors()` by enumerating all of `X`. Fine at
-  `|X| = 8`, hopeless beyond about twenty atoms.
+  textbook figure of `O(|V| log |V| + |E|)` needs a Fibonacci heap.
+- **`ex09`** computes `predecessors()` by enumerating the whole state space. Fine
+  at eight states, hopeless beyond about twenty facts.
 - **`ex11`** implements plain DPLL, with no clause learning, watched literals or
   restarts. Modern solvers are orders of magnitude faster.
+
+There is a fourth, which is not in the code but in the problems: every surface
+here treats the aeroplane as a point that turns on the spot and pavement as
+usable-or-not. The capstone is what removes that.

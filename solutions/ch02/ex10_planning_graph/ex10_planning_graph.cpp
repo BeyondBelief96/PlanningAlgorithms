@@ -1,10 +1,16 @@
-// Reference solution -- Exercise 10: the planning graph (Section 2.5.2).
+// Reference solution -- Exercise 10: how early could it finish?
 //
-// The planning graph over-approximates reachability.  A literal appears in
-// layer i if *some* i-step plan could make it true, ignoring the interactions
-// between the operators that would have to run.  Mutex pairs claw back some of
-// that optimism cheaply, and the result is polynomial in size where the state
-// transition graph is exponential.
+// The structure over-approximates.  A fact appears in round i if *some* i-step
+// plan could make it true, ignoring the interactions between the jobs that
+// would have to run together.  Conflicting pairs claw back some of that
+// optimism cheaply, and what comes out is polynomial in size where the state
+// space is exponential.
+//
+// The answer it gives is a floor -- "not before the third round, whatever you
+// do" -- which for a turnaround is usually the number the ramp wants.
+//
+// [book] Section 2.5.2, the Blum-Furst planning graph; conflicting pairs are
+// mutex pairs.
 #include <algorithm>
 #include <vector>
 
@@ -169,7 +175,7 @@ PlanningGraph buildPlanningGraph(const StripsProblem& problem, int maxLayers) {
 
     // Levelled off?  Section 2.5.2 states the condition as O_{i+1} = O_i and
     // L_{i+1} = L_i, and since O_i is determined entirely by L_i, comparing the
-    // literal layers is enough.  For the flashlight this stops at L4, exactly
+    // literal layers is enough.  For the hold this stops at L4, exactly
     // where Figure 2.20 does.
     //
     // Real GraphPlan waits longer: the mutex sets keep shrinking for a while

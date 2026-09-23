@@ -1,4 +1,13 @@
-// planning_graph.hpp -- Section 2.5.2, the Blum-Furst planning graph.
+// planning_graph.hpp -- How early could this job possibly be finished?
+//
+// Searching a turnaround description for a plan is expensive.  Often the useful
+// question is cheaper: assume every job that *could* run does run, all at once,
+// round after round, and keep track only of which pairs of facts cannot
+// honestly hold together at the same time.  What comes out is not a plan, it is
+// a floor -- "not before the third round, whatever you do" -- and it is usually
+// enough to tell the ramp what it needs to know.
+//
+// [book] LaValle Section 2.5.2, the Blum-Furst planning graph.
 #pragma once
 
 #include <set>
@@ -21,9 +30,9 @@ inline SignedLit makeLit(int atom, bool positive) {
 inline int litAtom(SignedLit l) { return (l > 0 ? l : -l) - 1; }
 inline bool litPositive(SignedLit l) { return l > 0; }
 
-// An entry in an operator layer.  Either a real operator from O, or one of the
-// "trivial" maintenance operators that carry a literal forward unchanged --
-// the planning-graph counterpart of the termination action u_T.
+// An entry in a round: either a real job, or a do-nothing that carries one fact
+// forward untouched.  A fact nobody disturbs is still true next round, and the
+// graph needs something to point at when it says so.
 struct GraphOp {
   int op = -1;            // index into StripsProblem::operators, or -1
   SignedLit maintain = 0; // nonzero for a trivial operator, giving the literal it maintains
@@ -59,9 +68,9 @@ struct PlanningGraph {
 // literal layers have been produced.
 PlanningGraph buildPlanningGraph(const StripsProblem& problem, int maxLayers = 16);
 
-// True when every literal of G appears in layer `layer` with no two of them
-// mutex -- the necessary (but not sufficient) condition the GraphPlan search
-// tests before it tries to extract a plan.
+// True when everything the job needs is present in this round and no two of
+// those things conflict.  Necessary, not sufficient: it means "not ruled out
+// yet", which is exactly the cheap test worth doing before searching.
 bool goalPossiblyReachable(const StripsProblem& problem, const PlanningGraph& graph, int layer);
 
 // The smallest layer index for which goalPossiblyReachable() holds, or -1.

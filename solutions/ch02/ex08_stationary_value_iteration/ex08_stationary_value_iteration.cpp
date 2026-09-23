@@ -1,13 +1,19 @@
-// Reference solution -- Exercise 08: value iteration for plans of unspecified
-// length (Section 2.3.2).
+// Reference solution -- Exercise 08: what to do from anywhere.
 //
-// The termination action u_T does all the work.  It keeps the state where it
-// is and adds no cost, so a two-step plan padded out to five steps costs the
-// same as the two-step plan.  That makes "optimal over plans of length exactly
-// K" equal to "optimal over plans of length at most K", and once the sweeps
-// stop changing anything, K has effectively become unbounded:
+// Letting the aeroplane stop does all the work.  Stopping keeps it where it is
+// and adds no cost, so a two-move route padded out to five moves costs exactly
+// the same.  That makes "best route of exactly K moves" equal to "best route of
+// at most K moves", and once the sweeps stop changing anything the budget has
+// effectively become unbounded:
 //
-//     G*(x) = min( l_F(x), min over u of [ l(x, u) + G*(f(x, u)) ] )
+//     stillToGo(x) = min( 0 if it may stop at x, else infinity,
+//                         min over moves of [ cost + stillToGo(where it leads) ] )
+//
+// What comes out is not a route.  It is an instruction for every place on the
+// airport, which is the whole reason this exercise exists.
+//
+// [book] Section 2.3.2; the stop option is the termination action u_T and the
+// recurrence is (2.18).
 #include <algorithm>
 #include <stdexcept>
 #include <vector>

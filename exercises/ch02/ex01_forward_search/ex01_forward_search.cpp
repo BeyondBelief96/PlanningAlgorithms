@@ -1,4 +1,4 @@
-// Exercise 01 -- The general forward search template (Figure 2.4).
+// Exercise 01 -- A route at all.
 //
 // Read exercises/ch02/ex01_forward_search/README.md first.
 //
@@ -12,30 +12,33 @@
 namespace planning {
 namespace {
 
-// TODO(you): write the template of Figure 2.4 once, and let the queue
-// discipline be the only thing that differs between breadth and depth first.
+// TODO(you): write the search template once, and let the queue discipline be
+// the only thing that differs between breadth and depth first.
 //
-//   1  Q.Insert(x_I) and mark x_I as visited
-//   2  while Q not empty do
-//   3      x <- Q.GetFirst()
-//   4      if x in X_G
-//   5          return SUCCESS
-//   6      forall u in U(x)
-//   7          x' <- f(x, u)
-//   8          if x' not visited
-//   9              mark x' as visited
-//   10             Q.Insert(x')
-//   11         else
-//   12             resolve duplicate x'
-//   13 return FAILURE
+//   1  put where the aeroplane is into Q, and mark it visited
+//   2  while Q is not empty
+//   3      x <- take one out of Q
+//   4      if x will do, return SUCCESS
+//   5      for each option available at x
+//   6          x' <- where that option leads
+//   7          if x' has not been visited
+//   8              mark x' visited and put it into Q
+//   9          else
+//   10             deal with having reached x' twice
+//   11 return FAILURE
 //
-// Things the figure leaves out and you have to decide:
-//   - How do you recover the plan?  (Hint: record a parent pointer and the
-//     action that produced each state, then call reconstructForward().)
-//   - Where do you mark a state visited -- when you insert it, or when you pop
-//     it?  Either works here; say why in a comment.
-//   - Fill in Plan::expanded and Plan::generated.  Exercises 18-20 of the book
-//     are about comparing those numbers, so start collecting them now.
+// Things the template leaves out and you have to decide:
+//   - How do you recover the route?  (Hint: record, for each place, which place
+//     it was first reached from and which move did it, then call
+//     reconstructForward().)
+//   - Where do you mark a place visited -- when you put it in, or when you take
+//     it out?  Either works here; say why in a comment.  It will *not* be
+//     either in Exercise 02.
+//   - Fill in Plan::expanded (places examined) and Plan::generated (places ever
+//     queued).  Exercises 02 to 05 are largely about comparing those two
+//     numbers across methods, so start collecting them now.
+//
+// [book] LaValle Figure 2.4, FORWARD_SEARCH.
 
 }  // namespace
 

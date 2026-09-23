@@ -44,7 +44,8 @@ target_include_directories(planning_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/incl
 target_link_libraries(planning_core PUBLIC planning_warnings)
 
 # ---------------------------------------------------------------------------
-# The chapter 2 units.  Each name below has three files:
+# The chapter 2 units -- the algorithms, on a hand-sized airport.  Each name
+# below has three files:
 #
 #   exercises/ch02/<unit>/<unit>.cpp   the stub you fill in
 #   solutions/ch02/<unit>/<unit>.cpp   the reference implementation
@@ -160,19 +161,22 @@ add_executable(taxi_demo_reference tools/taxi_demo.cpp)
 target_link_libraries(taxi_demo_reference PRIVATE planning_capstone_reference)
 
 # ---------------------------------------------------------------------------
-# Demos.  Same program, built against each variant, for book Exercises 18-21.
+# Demos.  Same program, built against each variant:
+#
+#   surface_demo     every search method, on the same piece of airport
+#   turnaround_demo  one ground task, described four ways
 # ---------------------------------------------------------------------------
-add_executable(grid_demo tools/grid_demo.cpp)
-target_link_libraries(grid_demo PRIVATE planning_ch02_yours)
+add_executable(surface_demo tools/surface_demo.cpp)
+target_link_libraries(surface_demo PRIVATE planning_ch02_yours)
 
-add_executable(grid_demo_reference tools/grid_demo.cpp)
-target_link_libraries(grid_demo_reference PRIVATE planning_ch02_reference)
+add_executable(surface_demo_reference tools/surface_demo.cpp)
+target_link_libraries(surface_demo_reference PRIVATE planning_ch02_reference)
 
-add_executable(logic_demo tools/logic_demo.cpp)
-target_link_libraries(logic_demo PRIVATE planning_ch02_yours)
+add_executable(turnaround_demo tools/turnaround_demo.cpp)
+target_link_libraries(turnaround_demo PRIVATE planning_ch02_yours)
 
-add_executable(logic_demo_reference tools/logic_demo.cpp)
-target_link_libraries(logic_demo_reference PRIVATE planning_ch02_reference)
+add_executable(turnaround_demo_reference tools/turnaround_demo.cpp)
+target_link_libraries(turnaround_demo_reference PRIVATE planning_ch02_reference)
 
 # `cmake --build . --target check` == run only your implementations.
 add_custom_target(check

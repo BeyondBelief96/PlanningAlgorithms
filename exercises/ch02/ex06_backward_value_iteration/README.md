@@ -1,9 +1,9 @@
-# Exercise 06 — Backward value iteration, fixed length
+# Exercise 06 — The cost still to go
 
-**Book:** Section 2.3.1.1, Figures 2.8 and 2.9 · **Guide:** [docs/ch02/05-optimal-fixed-length.md](../../../docs/ch02/05-optimal-fixed-length.md)
+**Guide:** [The answer for everywhere, on a fixed budget](../../../docs/ch02/05-optimal-fixed-length.md)
 
-This is book Exercise 22: *"Implement backward value iteration and verify its
-correctness by reconstructing the costs obtained in Example 2.5."*
+Search gives you a route from where the aeroplane is. This gives you a number for
+**every place on the airport**: how long the taxi still is, from there.
 
 ## Implement
 
@@ -12,33 +12,35 @@ CostTable backwardValueIteration(const Problem& problem, int K);
 Plan planFromBackwardValues(const Problem& problem, const CostTable& G);
 ```
 
-Equation (2.11):
+Row by row, from a boundary row that is `problem.finalCost(x)` — zero where the
+aeroplane may stop, infinity everywhere else:
 
 ```
-G*_k(x_k) = min over u_k of [ l(x_k, u_k) + G*_{k+1}(f(x_k, u_k)) ]
+still to go(place, k moves left) = min over moves of
+                                      [ cost of the move
+                                        + still to go(where it leads, k-1 moves left) ]
 ```
 
-from the boundary condition `G*_F(x) = l_F(x) = problem.finalCost(x)`.
-
-Return `K + 1` rows: row 0 is `G*_F`, row 1 is `G*_K`, ..., row `K` is `G*_1` —
-the order Figure 2.9 prints them, so you can read your output straight against the
-page.
+Return `K + 1` rows: row 0 is the budget fully spent, row `r` is `r` moves still
+to spend, row `K` is the whole budget available. That is the order the guide
+prints them in, so you can read your output straight against it.
 
 ## The traps
 
-**Beware `inf`.** If `G*_{k+1}(f(x, u))` is infinite, skip that action rather than
-computing `inf + something`. Arithmetic on infinities is defined in IEEE 754 but
-your `min` will end up carrying `inf` around where you wanted "no such action".
+**Beware infinity.** If the place a move leads to is infinite, skip that move
+rather than computing `inf + something`. The arithmetic is defined in IEEE 754 and
+your `min` will end up carrying infinity where you meant "no such option".
 
-**There is no termination action here.** A plan must use *exactly* `K` actions.
-So a state can be in `X_G` and still have an infinite value: look at the `d`
-column of Figure 2.9 and work out why `G*_4(d) = inf` when `G*_5(d) = 0`. (From
-`d` at stage 4 you must take one more action, and `d`'s successors are `c` and
-`e`, neither of which is the goal.) This is the oddity Exercise 08 removes.
+**There is no "and stop" here.** The route must use *exactly* the budget. So a
+place can be a perfectly good holding point and still have an infinite value:
+look at the `HS 27 E` column and work out why it is 0 with no moves left and
+infinity with one. (From the holding point with one move to spend you must spend
+it, and the only places it takes you are back onto taxiway A or onto the runway.)
+This absurdity is what Exercise 08 removes.
 
-**The index arithmetic in `planFromBackwardValues` is the fiddly part.** At stage
-`k` you need `G*_{k+1}`, which is row `K - k`. Write out the mapping for `K = 4`
-on paper before you code it.
+**The index arithmetic in `planFromBackwardValues` is the fiddly part.** To decide
+what to do at row `k` you need row `k - 1`, which is row `K - k` of the table.
+Write the mapping out for K = 4 on paper before you write any code.
 
 ## Run it
 
@@ -48,23 +50,49 @@ ctest --test-dir build/vs -C Debug -R ch02.ex06 --output-on-failure
 
 ## What the tests check
 
-Figure 2.9, cell by cell, for `figure2_8()` with `K = 4`:
+`departureTaxi()` with a budget of four, cell by cell:
 
 ```
-         a    b    c    d    e
- G*_5   inf  inf  inf    0  inf
- G*_4   inf    4    1  inf  inf
- G*_3     6    2  inf    2  inf
- G*_2     4    6    3  inf  inf
- G*_1     6    4    5    4  inf
+                  STAND 2  APRON  TWY A  HS 27 E  RWY 27
+ 0 moves left        inf    inf    inf        0     inf
+ 1 move left         inf      4      1      inf     inf
+ 2 moves left          6      2    inf        2     inf
+ 3 moves left          4      6      3      inf     inf
+ 4 moves left          6      4      5        4     inf
 ```
 
-Plus: the recovered plan uses exactly 4 actions and costs 6 (`G*_1(a)` — the
-self-loop `a -> a` burns a stage for 2, then `a -> b -> c -> d`); no 1-step plan
-exists; and with enough stages the result agrees with Dijkstra on a grid.
+Three things in that table are worth staring at.
 
-If your table differs from the book's in one cell, print it and compare:
+**The `RWY 27` column is infinite everywhere.** There is no such thing as
+un-entering a runway. The table has discovered, without being told, that the
+airport is not strongly connected — and on a real surface that is the single most
+important thing a planner can say: *from here, your clearance cannot be complied
+with.*
+
+**The numbers are not monotone down a column.** Three moves left gives 4 at the
+stand; two moves left gives 6. Longer is not worse; longer is a different
+question, and that is entirely an artefact of the budget.
+
+**The recovered route uses exactly four moves and costs six minutes, not four.**
+The quick way out is three legs, so to spend a budget of exactly four the
+aeroplane holds at the stand for two minutes and then taxis. Padding is not free,
+and that is the honest reason nobody plans a taxi with a fixed move count.
+
+Plus: a budget of one produces no route at all, and with enough budget the answer
+agrees with Dijkstra on `standArea`.
+
+If your table differs in one cell, print it and compare:
 
 ```cpp
-std::cout << formatCostTable(problem, {"G*_5", "G*_4", "G*_3", "G*_2", "G*_1"}, G);
+std::cout << formatCostTable(problem, {"0 left", "1 left", "2 left", "3 left", "4 left"}, G);
 ```
+
+One wrong cell usually points at one wrong line.
+
+---
+
+**In the book:** LaValle Section 2.3.1.1 — this is book Exercise 22, *"implement
+backward value iteration and verify its correctness by reconstructing the costs
+obtained in Example 2.5."* The recurrence is (2.11) from the boundary condition
+`G*_F(x) = l_F(x)`, and the table above is **Figure 2.9** exactly, with a → STAND
+2, b → APRON, c → TWY A, d → HS 27 E, e → RWY 27. Rows are `G*_5` down to `G*_1`.

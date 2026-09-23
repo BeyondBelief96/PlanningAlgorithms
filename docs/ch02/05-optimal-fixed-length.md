@@ -1,185 +1,239 @@
-# 5. Optimal fixed-length plans — Section 2.3.1
+# 5. The answer for everywhere, on a fixed budget
 
-> Read alongside book pages 43–50, Figures 2.8–2.12.
-> Exercises: [06, backward value iteration](../../exercises/ch02/ex06_backward_value_iteration/README.md),
-> [07, forward value iteration](../../exercises/ch02/ex07_forward_value_iteration/README.md)
+> Exercises: [06, the cost still to go](../../exercises/ch02/ex06_backward_value_iteration/README.md),
+> [07, the cost already spent](../../exercises/ch02/ex07_forward_value_iteration/README.md)
 
-This is the part of Chapter 2 that pays for the whole book. Value iteration is the
-engine behind Chapter 8 (feedback plans), Chapter 10 (planning under uncertainty),
-Chapter 11 (information spaces) and most of Part IV. It is worth going slowly.
+This is the part of the unit that pays for everything after it. It is worth going
+slowly, and it is worth doing the tables by hand at least once.
 
-## Formulation 2.2
+Search gives you a route from where the aeroplane is. What follows gives you a
+*number for every place on the airport*: how long the taxi still is, from there.
+It costs far more to compute and it answers a far better question, because an
+aeroplane on a real surface is routinely not where the plan said it would be.
 
-Three additions to Formulation 2.1:
+## What changes
 
-1. A **stage index** `k`, so states can be written `x_k`.
-2. A **stage-additive cost functional**
+Three additions to guide 1's model:
 
-   ```
-   L(π_K) = sum over k = 1..K of l(x_k, u_k)  +  l_F(x_F)
-   ```
+1. **A stage index.** Places get a step number attached: where were you after
+   two moves, after three.
+2. **Costs that add up.** The cost of a route is the sum of the per-move costs,
+   plus a final term that is 0 if you finished somewhere acceptable and infinity
+   if you did not.
+3. **A budget.** The route must use **exactly** K moves.
 
-   where `F = K + 1`, and `l_F(x_F) = 0` if `x_F in X_G` and `∞` otherwise.
-3. A fixed number `K` of stages. A plan must use **exactly** `K` actions.
+The additivity is doing real work in that list. It means the cost of a route is a
+sum of terms each depending only on where you are and what you do — and that is
+exactly the structure the next section needs.
 
-"Stage-additive" is doing real work in that definition. It means the cost of a plan
-is the sum of per-step terms, each depending only on the current state and action —
-and that is exactly the structure the dynamic programming principle needs.
+The infinity is the same trick as before: a route that does not finish where it
+should costs infinity, so any minimisation throws it away for free. Finite means
+feasible, at that cost.
 
-`l_F` is the ∞ trick again: `L(π_K) = ∞` means infeasible, `L(π_K) < ∞` means
-feasible at that cost, and any minimisation discards the infeasible plans for free.
+Two special cases worth noting. Make every move free and you are back to guide 1,
+restricted to K-move routes. Make every move cost 1 and you are minimising the
+number of moves, which is breadth first.
 
-Two special cases worth noting:
-- `l(x, u) ≡ 0` recovers feasible planning restricted to `K`-step plans.
-- `l(x, u) ≡ 1` minimises the number of stages.
+### Why on earth a fixed budget?
 
-## The principle of optimality
+Because it makes the recurrence clean, and because the machinery generalises the
+moment you remove it — which guide 6 does, in about four lines.
+
+Be clear that the budget itself is an artefact. Nobody plans a taxi in exactly
+four moves. Exercise 06 makes this concrete and slightly absurd: with a budget of
+four and a three-move route out to the holding point, the best the aeroplane can
+do is *hold at the stand for two minutes* and then taxi. Six minutes instead of
+four, and the extra two are pure padding.
+
+Hold onto that absurdity. It is the whole motivation for guide 6.
+
+## Portions of good routes are good routes
 
 > Portions of optimal plans are themselves optimal.
 
-This is almost a tautology once stated — if you could swap out a portion of an
-optimal plan for a cheaper portion with the same endpoints, the original was not
-optimal. But it licenses an enormous saving. Enumerating every `K`-step action
-sequence costs `O(|U|^K)`. Value iteration costs `O(K |X| |U|)`.
+Almost a tautology once stated — if you could swap out part of a best route for a
+cheaper part with the same two ends, it was not the best route. But it licenses an
+enormous saving.
 
-For the grid demo's `openRoom`, with `|X| = 240`, `|U| = 4`, `K = 23`, that is the
-difference between 7 × 10^13 and about 22,000.
+Enumerating every K-move sequence costs `options^K`. Building the table costs
+`K × places × options`. For `openApron`, with 240 squares, 4 options each and a
+23-move route, that is the difference between 7 × 10^13 and about 22,000.
 
-## Backward value iteration
+## Working backwards: the cost still to go
 
-Define the optimal cost-to-go from stage `k` onward:
+Define, for each place and each number of moves remaining, the cheapest way to
+finish. At the boundary there are no moves left, so you just collect the final
+term: zero if you are already somewhere acceptable, infinity otherwise.
 
-```
-G*_k(x_k) = min over u_k, ..., u_K of [ sum_{i=k}^{K} l(x_i, u_i) + l_F(x_F) ]
-```
-
-At the boundary, there are no actions left to take, so you simply collect the final
-cost:
+Then each row comes from the one before it:
 
 ```
-G*_F(x_F) = l_F(x_F)                                                    (2.6)
+still to go(place, k moves left) = min over moves of
+                                      [ cost of the move
+                                        + still to go(where it leads, k-1 moves left) ]
 ```
 
-And the derivation in the book (equations 2.9–2.11) pulls the first term out of the
-sum, notices that the inner minimisation is precisely `G*_{k+1}`, and lands on:
+One sweep over every place per row, K sweeps in all.
+
+### The departure taxi, with a budget of four
+
+`departureTaxi()`: stand 2, out to the holding point short of runway 27 at
+taxiway E.
 
 ```
-G*_k(x_k) = min over u_k of [ l(x_k, u_k) + G*_{k+1}(f(x_k, u_k)) ]     (2.11)
+  STAND 2 --(2)-> STAND 2      hold at the stand
+  STAND 2 --(2)-> APRON        push back and start the taxi
+  APRON   --(1)-> TWY A
+  APRON   --(4)-> HS 27 E      the long way round on the apron lanes
+  TWY A   --(1)-> HS 27 E
+  TWY A   --(1)-> STAND 2      give up, return to stand
+  HS 27 E --(1)-> TWY A        abandon the crossing
+  HS 27 E --(1)-> RWY 27       line up, once cleared
 ```
 
-One sweep over `X` per stage, `K` sweeps in all:
+Costs are minutes. With a budget of four moves, the table is:
 
 ```
-G*_F -> G*_K -> G*_{K-1} -> ... -> G*_2 -> G*_1
-```
-
-### Example 2.3, and what the test checks
-
-`figure2_8()` with `K = 4`, `x_I = a`, `X_G = {d}` produces Figure 2.9:
-
-```
-         a    b    c    d    e
- G*_5   inf  inf  inf    0  inf
- G*_4   inf    4    1  inf  inf
- G*_3     6    2  inf    2  inf
- G*_2     4    6    3  inf  inf
- G*_1     6    4    5    4  inf
+                  STAND 2  APRON  TWY A  HS 27 E  RWY 27
+ 0 moves left        inf    inf    inf        0     inf
+ 1 move left         inf      4      1      inf     inf
+ 2 moves left          6      2    inf        2     inf
+ 3 moves left          4      6      3      inf     inf
+ 4 moves left          6      4      5        4     inf
 ```
 
 `test_ex06` checks this row by row, so you will know at once if you have the
-recurrence backwards.
+recurrence backwards. Three things in it are worth staring at.
 
-Three things in that table are worth staring at.
+**The `RWY 27` column is infinite everywhere.** An aeroplane that has entered the
+runway has no edge back to the holding position — there is no such thing as
+un-entering a runway, and nothing on the surface graph pretends otherwise. The
+table is telling you the airport is not strongly connected, which is information
+you would otherwise have to go looking for. It is also, on a real surface, the
+single most important thing a planner can say: *from here, your clearance cannot
+be complied with.*
 
-**The `e` column is infinite everywhere.** `e` has no outgoing edges, so it can
-never reach `d`. This is the table telling you the state space is not strongly
-connected, which is information you would otherwise have to go looking for.
+**`HS 27 E` is infinite with one move left, even though it is the goal.** There is
+no "and stop" in this model. From the holding point with one move to spend you
+must spend it, and the only places it takes you are back onto A or onto the
+runway. Being where you want to be is worthless if you are not allowed to stop.
+Guide 6 is precisely about fixing this.
 
-**`G*_4(d) = ∞` even though `d` is the goal.** There is no termination action in
-Formulation 2.2. From `d` at stage 4 you must take exactly one more action, and
-`d`'s successors are `c` and `e`, neither of which is the goal. Being *at* the goal
-is not enough if you are not allowed to stop. Section 2.3.2 is precisely about
-fixing this.
+**The numbers are not monotone down a column.** Three moves left gives 4 at
+`STAND 2`; two moves left gives 6. Longer is not worse; longer is a *different
+question*, because "finish in exactly four" and "finish in exactly three" are not
+the same request. This is an artefact of the budget and it disappears in guide 6.
 
-**The values are not monotone down the column.** `G*_3(a) = 6` but `G*_2(a) = 4`.
-Longer is not worse; longer is just *different*, because a plan of exactly 4 actions
-and a plan of exactly 3 actions are answering different questions. Again, this is
-an artefact of the fixed length, and it disappears in Section 2.3.2.
+### Getting the route back out
 
-### Recovering the plan
+Storing the best move at every place and every row costs `K × places`. Guide 6
+brings it down to just `places`, which is what `Stationary::policy` is.
 
-Storing the argmin at every state and stage costs `O(K|X|)`. The book notes this
-can be brought down to `O(|X|)` using the tricks of Section 2.3.2 — which is what
-`Stationary::policy` is.
+For Exercise 06 you re-derive the best move from the table instead, and the index
+arithmetic is the fiddly part: to decide what to do at row `k` you need row
+`k - 1`, which is row `K - k` of the returned table. Write it out for K = 4 on
+paper before you write any code.
 
-For Exercise 06 you re-derive the argmin from the table instead. The index
-arithmetic is the fiddly part: at stage `k` you need `G*_{k+1}`, which is row
-`K - k` of the returned table. Write it out for `K = 4` before you code it.
+## Working forwards: the cost already spent
 
-## Forward value iteration
-
-The mirror image. Define the optimal cost-to-come:
-
-```
-C*_{k+1}(x_{k+1}) = min over (x_k, u) with f(x_k, u) = x_{k+1}
-                        of [ C*_k(x_k) + l(x_k, u) ]                   (2.16)
-```
-
-starting from `C*_1(x) = 0` at `x_I` and `∞` elsewhere. For `figure2_8()` with
-`x_I = a` this is Figure 2.12:
+The mirror image. For each place and each number of moves *made*, the cheapest
+way to be standing there:
 
 ```
-         a    b    c    d    e
- C*_1     0  inf  inf  inf  inf
- C*_2     2    2  inf  inf  inf
- C*_3     4    4    3    6  inf
- C*_4     4    6    5    4    7
- C*_5     6    6    5    6    5
+already spent(place, after k+1 moves) = min over moves that arrive here of
+                                           [ already spent(where it came from, after k)
+                                             + cost of the move ]
 ```
 
-### The two asymmetries, and why they matter
+starting from 0 where the aeroplane is and infinity everywhere else. On the same
+departure taxi:
 
-**The cost-to-come does not know about the goal.** Nothing in (2.16) mentions
-`X_G`. The goal only enters at the very end, when you add `l_F`. `test_ex07` makes
-this explicit: it moves the goal to a different state and checks that every row of
-the table is unchanged.
+```
+                  STAND 2  APRON  TWY A  HS 27 E  RWY 27
+ 0 moves made          0     inf    inf      inf     inf
+ 1 move made           2       2    inf      inf     inf
+ 2 moves made          4       4      3        6     inf
+ 3 moves made          4       6      5        4       7
+ 4 moves made          6       6      5        6       5
+```
 
-Backward value iteration is the opposite — it cannot even start without `X_G`,
-since `G*_F = l_F`.
+### Two asymmetries, and why they matter
 
-**Forward needs `f^{-1}`.** To fill in a value at `x` you must know who can reach
-`x`, not where `x` leads. `problem.predecessors(x)` hands it over here, but in a
-real problem the backward transition may be much harder to compute than the forward
-one. This is why the book presents the backward version first, even though moving
-forward from `x_I` feels more natural:
+**The cost already spent does not know where you are going.** Nothing in the
+recurrence mentions the goal at all. Re-clear the aircraft to a different
+destination and every row is unchanged — `test_ex07` checks exactly that. What it
+cost to get somewhere depends on the airport and where you started, not on the
+clearance.
 
-> Even though it may appear superficially to be easier to progress from `x_I`, it
-> turns out that progressing backward from `X_G` is notationally simpler.
+Working backwards is the opposite: it cannot even start without knowing where the
+route is supposed to end.
 
-Which one you actually want depends on the problem. Chapter 8 will want the
-backward one, because `G*` is a function over the whole state space that tells you
-what to do from *anywhere* — a feedback plan, not a path.
+**Working forwards needs to know how places are reached.** To fill in a value at
+`x` you need to know who can get to `x`, not where `x` leads. `predecessors(x)`
+hands it over here; on a real surface graph with headings it is the harder of the
+two directions, which is why the backward form is usually presented first even
+though starting from the aeroplane feels more natural.
 
-## Book exercises 3, 4 and 5 — left open
+Which one you want depends on what you are going to do with it. If you want a
+route now, either. If you want to be able to answer "and what if the aeroplane is
+somewhere else", you want the backward one, because it is a function over the
+whole airport rather than a path across it.
 
-These three generalise the formulation, and they are good pencil exercises because
-the recurrence barely changes:
+## Three open extensions
 
-**Exercise 3** replaces `l(x_k, u_k)` with `l(x_k, u_k, x_{k+1})` — the cost may
-depend on where you land. Show the dynamic programming principle still applies.
-(Hint: the derivation of (2.11) never used the fact that `l` was independent of
-`x_{k+1}`; write it out and see.) `Transition` already carries the successor
-alongside the cost, so the code change is smaller than you would expect.
+These are pencil exercises, and they are good ones, because the recurrence barely
+changes.
 
-**Exercise 4** makes the cost stage-dependent, `l(x_k, u_k, k)`. What breaks if you
-try to run this to stationarity in Section 2.3.2, and why?
+**Cost that depends on where you land.** Let a move's cost depend on the place it
+leads to as well as the place it starts from. Show the argument still works.
+(Hint: the derivation never used the fact that it did not. Write it out.)
+`Transition` already carries the destination alongside the cost, so the code
+change is smaller than you would expect. This is not academic — a taxi cost that
+charges extra for *entering* a hotspot is exactly this shape.
 
-**Exercise 5** replaces "stay where you are" with a dedicated terminal state `x_T`.
-Work out what has to change in `f`, in `l`, and in `l_F`. Then compare against
-`kTerminate` in `Stationary::policy` — the two formulations are equivalent, and
-seeing why is the exercise.
+**Cost that depends on the stage.** Let the cost of a move depend on which step
+you are at. What breaks when you try to run this to settlement in guide 6, and
+why? (A departure slot that closes in six minutes is this problem, and the answer
+is that you cannot drop the stage index any more.)
+
+**A real stopping place.** Instead of "stay where you are", add a dedicated
+finished-state that everything falls into and never leaves. Work out what has to
+change. Then compare against `kTerminate` in `Stationary::policy` — the two
+formulations are equivalent, and seeing why is the exercise.
 
 ---
 
-Next: [plans of unspecified length](06-unspecified-length.md), which removes the
-fixed `K`.
+## In the book
+
+LaValle Section 2.3.1, pages 43–50, Formulation 2.2. The stage index is `k`, the
+stage-additive cost functional is `L(π_K) = Σ l(x_k, u_k) + l_F(x_F)` with
+`F = K + 1`, and `l_F` is 0 on `X_G` and infinity elsewhere.
+
+The principle of optimality is quoted verbatim. The backward recurrence is
+(2.6) at the boundary and (2.11) in general:
+
+```
+G*_F(x_F) = l_F(x_F)
+G*_k(x_k) = min over u_k of [ l(x_k, u_k) + G*_{k+1}(f(x_k, u_k)) ]
+```
+
+and the forward one is (2.16):
+
+```
+C*_{k+1}(x_{k+1}) = min over (x_k, u) with f(x_k, u) = x_{k+1}
+                        of [ C*_k(x_k) + l(x_k, u) ]
+```
+
+The departure-taxi table above is Figure 2.9, and the cost-to-come table is
+Figure 2.12, both for Example 2.3 on Figure 2.8 with `K = 4`, `x_I = a`,
+`X_G = {d}`. The relabelling is exact: a → STAND 2, b → APRON, c → TWY A,
+d → HS 27 E, e → RWY 27.
+
+The book's remark that "even though it may appear superficially to be easier to
+progress from `x_I`, it turns out that progressing backward from `X_G` is
+notationally simpler" is from this section. The three open extensions are book
+Exercises 3, 4 and 5.
+
+---
+
+Next: [taking the budget away](06-unspecified-length.md).
