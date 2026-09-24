@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Planning algorithms, built up on an airport surface: twelve taxi problems and a twelve-step autonomous taxi planner.",
+  "description": "Planning algorithms, built up on an airport surface: LaValle's Chapter 2 as concrete taxi problems, and a twelve-step autonomous taxi planner.",
   "engines": {
     "node": ">=20.11"
   },
@@ -12,6 +12,8 @@
     "test:watch": "vitest --project yours",
     "test:reference": "vitest run --project reference",
     "test:all": "vitest run",
+    "test:taxi": "vitest run --project yours tests/p",
+    "test:capstone": "vitest run --project yours tests/capstone",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
     "surface": "tsx tools/surface-demo.ts",

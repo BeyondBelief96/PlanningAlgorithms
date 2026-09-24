@@ -11,10 +11,19 @@ import type {
   Aircraft,
   Chart,
   Clearance,
+  Cnf,
+  JobList,
   JobPlan,
   LinkId,
+  MinuteTable,
   NodeId,
+  RampDescription,
+  RampEncoding,
+  RampState,
+  RoundGraph,
+  TaxiNetwork,
   TaxiRoute,
+  TaxiSchedule,
   Turnaround,
 } from '../chart/index.js';
 
@@ -39,7 +48,7 @@ export interface Disruption {
   delaySeconds: number;
 }
 
-export interface Problems {
+export interface Problems extends ProblemsPart1b {
   // --- Problem 01: the first route -----------------------------------------
   /** Fewest legs from one point to another, ignoring the aeroplane entirely. */
   fewestLegs(chart: Chart, from: NodeId, to: NodeId): TaxiRoute;
@@ -104,4 +113,92 @@ export interface Problems {
   earliestOffBlock(t: Turnaround, crewAvailable?: number): JobPlan;
   /** The jobs with no slack: delay one by a minute and the whole thing slips. */
   criticalPath(t: Turnaround): string[];
+}
+
+// ===========================================================================
+// Part 1b -- the rest of the discrete-planning chapter
+//
+// Problems 01 to 12 cover breadth-first search, Dijkstra, A*, a backward
+// cost-to-go table and two scheduling problems.  Problems 13 to 20 are the
+// methods the book presents alongside those, in the order it presents them,
+// and on the same aerodrome.
+// ===========================================================================
+
+/**
+ * The settled answer of Problem 17: how long the taxi still is from every
+ * place, and what to do when you are standing there.
+ */
+export interface SettledTaxi {
+  /** One per place.  UNREACHABLE_MINUTES where the taxi cannot be completed. */
+  minutes: number[];
+  /**
+   * One per place: the index of the move to take, STOP where the taxi is
+   * already finished, NO_MOVE where there is nothing legal to do at all.
+   */
+  advice: number[];
+  /** How many sweeps before the numbers stopped moving. */
+  sweeps: number;
+  /** Every sweep, in order, so you can watch it settle. */
+  history: MinuteTable;
+}
+
+/** The same, counted forwards.  There is no advice here; see Problem 16. */
+export interface SettledSpend {
+  minutes: number[];
+  sweeps: number;
+  history: MinuteTable;
+}
+
+export interface ProblemsPart1b {
+  // --- Problem 13: deep first, and what it costs ---------------------------
+  /** A route, found by following one branch as far as it goes. */
+  depthFirstRoute(chart: Chart, from: NodeId, to: NodeId): TaxiRoute;
+  /** The same, but refusing to go more than `maxLegs` deep. */
+  routeWithinLegs(chart: Chart, from: NodeId, to: NodeId, maxLegs: number): TaxiRoute;
+  /** Depth first's memory with breadth first's guarantee, by throwing work away. */
+  iterativeDeepeningRoute(chart: Chart, from: NodeId, to: NodeId): TaxiRoute;
+
+  // --- Problem 14: from the other end --------------------------------------
+  /** The quickest route, searched backwards from the destination. */
+  backwardRoute(chart: Chart, ac: Aircraft, from: NodeId, to: NodeId): TaxiRoute;
+  /** Both ends at once, stopping when the two wavefronts touch. */
+  bidirectionalRoute(chart: Chart, from: NodeId, to: NodeId): TaxiRoute;
+
+  // --- Problem 15: the table for a fixed number of moves -------------------
+  /** Row k: with exactly k moves left, the cheapest finish from each place. */
+  minutesToGo(net: TaxiNetwork, moves: number): MinuteTable;
+  /** The route the table implies, using exactly the whole budget. */
+  scheduleFromTable(net: TaxiNetwork, table: MinuteTable): TaxiSchedule;
+
+  // --- Problem 16: the same table, forwards --------------------------------
+  /** Row k: after exactly k moves, the cheapest way to be standing at each place. */
+  minutesSpent(net: TaxiNetwork, moves: number): MinuteTable;
+
+  // --- Problem 17: taking the budget away ----------------------------------
+  settleMinutesToGo(net: TaxiNetwork): SettledTaxi;
+  settleMinutesSpent(net: TaxiNetwork): SettledSpend;
+  /** Follow the advice from wherever the aeroplane is, until it says stop. */
+  scheduleFromAdvice(net: TaxiNetwork, settled: SettledTaxi, from?: number): TaxiSchedule;
+
+  // --- Problem 18: describing the turnaround instead of drawing it ---------
+  jobIsPossible(desc: RampDescription, state: RampState, job: number): boolean;
+  afterJob(desc: RampDescription, state: RampState, job: number): RampState;
+  turnaroundIsDone(desc: RampDescription, state: RampState): boolean;
+  /** The fewest jobs that get the aeroplane ready.  Searched, not scheduled. */
+  shortestJobList(desc: RampDescription): JobList;
+
+  // --- Problem 19: how early could it possibly finish? ---------------------
+  buildRoundGraph(desc: RampDescription, maxRounds?: number): RoundGraph;
+  /** Could the turnaround be finished by this round?  Necessary, not sufficient. */
+  couldBeDoneBy(desc: RampDescription, graph: RoundGraph, round: number): boolean;
+  /** The first round for which that holds, or -1. */
+  earliestRound(desc: RampDescription, graph: RoundGraph): number;
+
+  // --- Problem 20: planning without a planner ------------------------------
+  encodeRamp(desc: RampDescription, K: number): RampEncoding;
+  /** Davis-Putnam-Logemann-Loveland.  undefined when the formula is unsatisfiable. */
+  solveCnf(cnf: Cnf): boolean[] | undefined;
+  jobsFromAssignment(encoding: RampEncoding, assignment: readonly boolean[]): number[];
+  /** Try K = 0, 1, 2, ... until the formula is satisfiable. */
+  jobListByFormula(desc: RampDescription, maxK?: number): JobList;
 }

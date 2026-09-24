@@ -9,3 +9,5 @@ export * from './aircraft.js';
 export * from './route.js';
 export * from './clearance.js';
 export * from './turnaround.js';
+export * from './network.js';
+export * from './operations.js';

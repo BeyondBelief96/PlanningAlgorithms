@@ -6,13 +6,19 @@ import {
   b777,
   type Chart,
   dash8,
+  type JobList,
   kiloField,
   type JobPlan,
+  type RampDescription,
+  type TaxiNetwork,
   type TaxiRoute,
+  type TaxiSchedule,
   type Turnaround,
   taxiwaysUsed,
+  validateJobList,
   validateJobs,
   validateRoute,
+  validateSchedule,
 } from '../src/chart/index.js';
 
 export const kilo = kiloField();
@@ -50,4 +56,32 @@ export function ways(chart: Chart, route: TaxiRoute): string[] {
 export function expectValidJobs(t: Turnaround, plan: JobPlan, crew = 0): void {
   const why = validateJobs(t, plan, crew);
   expect(why, `the plan does not hold together: ${why}`).toBe('');
+}
+
+// --- Part 1b ---------------------------------------------------------------
+
+/**
+ * A row of a minute table, with infinity written as Infinity so a failure
+ * prints something you can read.
+ */
+export function expectRow(actual: readonly number[] | undefined, expected: readonly number[]): void {
+  expect(actual, 'the table has no such row').toBeDefined();
+  expect(actual!.length, 'wrong number of places in the row').toBe(expected.length);
+  for (let i = 0; i < expected.length; ++i) {
+    const a = actual![i]!;
+    const b = expected[i]!;
+    if (b === Infinity) expect(a, `column ${i}`).toBe(Infinity);
+    else expect(a, `column ${i}`).toBeCloseTo(b, 9);
+  }
+}
+
+/** Every schedule a test gets runs this, for the same reason routes do. */
+export function expectValidSchedule(net: TaxiNetwork, schedule: TaxiSchedule): void {
+  const why = validateSchedule(net, schedule);
+  expect(why, `the schedule does not hold together: ${why}`).toBe('');
+}
+
+export function expectValidJobList(desc: RampDescription, list: JobList): void {
+  const why = validateJobList(desc, list);
+  expect(why, `the job list does not hold together: ${why}`).toBe('');
 }
